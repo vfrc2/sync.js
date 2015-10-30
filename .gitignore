@@ -4,4 +4,4 @@
 /public/bower_components/
 /node_modules/
 /.idea
-/*.log
+*.log

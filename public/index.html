@@ -1,17 +1,80 @@
 <!DOCTYPE html>
-<html ng-app>
+<html ng-app="my-app">
 <head>
+
     <title>Hello World, AngularJS - ViralPatel.net</title>
-    <script type="text/javascript"
-            src="bower_components/angular/angular.js"></script>
 
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+
+    <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+
+    <script src="bower_components/angular/angular.js"></script>
+
+    <script type="text/javascript" src="js/mainCtr.js"></script>
+    
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap-theme.css">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
+<body ng-controller="MainController">
 
-Write some text in textbox:
-<input type="text" ng-model="sometext" />
+<div class="container">
 
-<h1>Hello {{ sometext }}</h1>
+    <div class="row">
+        <h1>Sync</h1>
+
+        <div class="form-group">
+            <label>Device:</label>
+            <select class="form-control" ng-model="selectedDevice" ng-options="item as item.name for item in devices track by item.name">
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Path:</label>
+            <input class="form-control" ng-model="selectedDevice.path">
+        </div>
+        <div class="form-group">
+            <div class="checkbox">
+                <label><input type="checkbox" value="">Dry run (-n)</label>
+            </div>
+        </div>
+        <div class="form-group">
+            <button class="btn btn-success" ng-click="run()">Run!</button>
+        </div>
+
+        <div class="form-group">
+            <label for="comment">Rsync extra args:</label>
+            <textarea class="form-control" rows="2" id="comment"></textarea>
+        </div>
+        <div class="form-group">
+            <label for="comment">Ignore files:</label>
+
+            <script type="text/ng-template" id="item">
+                <div class="checkbox">
+                    <label><input type="checkbox" ng-change="selectChange(data)" ng-model="data.state"
+                            indeterminate>{{data.name}}</label>
+                    <ul>
+                        <li ng-repeat="data in data.child" ng-include="'item'"></li>
+                    </ul>
+                </div>
+            </script>
+
+            <div>
+                <ul>
+                    <li ng-repeat="data in ignoreFiles" ng-include="'item'">
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+
+
+    </div>
+
+</div>
 
 </body>
+
+
+
 </html>
