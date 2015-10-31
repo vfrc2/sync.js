@@ -1,14 +1,22 @@
-var express = require("express");
-var app = express();
 
-app.get('/', function(req, res) {
-    res.send('Hello world!');
-});
+module.exports = new function WebService()
+{
+    this.startService = function () {
+        var express = require('express');
+        var app = express();
 
-var server = app.listen(3000, function() {
-    var host = server.address().address;
-    var port = server.address().port;
+        app.use(express.static('public'));
 
-    console.log('App listening at http://%s:%s', host, port)
+        var rsync = require('../rsync-service');
 
-});
+        rsync.webApi('/api', app);
+        var server = app.listen(3000, function(err) {
+            "use strict";
+
+            if (err != null)
+                console.log("Error starting server");
+
+            console.log("Serever start at http://%s:%s", server.address().address, server.address().port);
+        });
+    }
+};

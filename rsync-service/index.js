@@ -30,16 +30,33 @@ function CreateRsyncService()
                 
                callback(null); 
             });
+        },
+        webApi: function(apiPath, app){
+            "use strict";
+
+            app.get(apiPath+'/status', function(req,res){
+                res.statusCode= 404;
+                res.end("Not ready yet!");
+            });
+
+            app.post(apiPath+'/start', function(req,res){
+                res.statusCode=404;
+                res.end("Not ready yet!");
+            });
+
+            app.post(apiPath+'/stop', function(req,res){
+                res.statusCode=404;
+                res.end("Not ready yet!");
+            });
         }
-    }
-    
-    util.inherits(service, EventEmitter);
+    };
+
+    return service;
+    //util.inherits(service, EventEmitter);
     
 }
 
-
-
-module.exports = CreateRsyncService();
+module.exports = new CreateRsyncService();
 
 
 
