@@ -55,7 +55,7 @@
             </div>
         </div>
         <div class="form-group">
-            <button class="btn btn-success" ng-click="run(selectedDevice)">Run!</button>
+            <button class="btn btn-success" ng-disabled="!canRun" ng-click="run(selectedDevice)">Run!</button>
         </div>
 
         <div class="form-group">

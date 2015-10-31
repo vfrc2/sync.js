@@ -4,30 +4,25 @@
 
 var myApp = angular.module('my-app', []);
 
-myApp.controller('MainController', ['$scope','rsync', function($scope, rsync) {
+myApp.controller('MainController', ['$scope','rsync', function($scope, rsync, $q) {
     "use strict";
 
     $scope.isSetupPage = true;
     $scope.isRunning = false;
     $scope.runningState = "";
+    $scope.canRun = true;
 
-    var state = rsync.status();
-
-    if (state.state != "running"){
-        initNotRunningState(state.data);
-    }
-
-    rsync.onProgressChange(function(data){
-            if (data.state != "running"){
-                $scope.isRunning = false;
-                $scope.$apply();
+    rsync.status()
+        .then(function(result)
+        {
+            if (result.state != "running") {
+                initNotRunningState(result.data);
             } else
             {
-                $scope.runningState = data.status;
-                $scope.$apply();
+                $scope.isSetupPage = false;
+                $scope.isRunning = true;
             }
-
-        });
+        }).catch(proccedError);
 
     $scope.run = function(device){
 
@@ -46,10 +41,15 @@ myApp.controller('MainController', ['$scope','rsync', function($scope, rsync) {
                 extraArgs.push("--exclude '" + item.name + "'");
         })
 
-        rsync.runRsync(device.path, extraArgs);
-        $scope.isRunning = true;
-        $scope.isSetupPage = false;
-    }
+        rsync.runRsync(device.path, extraArgs)
+            .then(function(){
+                $scope.isRunning = true;
+                $scope.isSetupPage = false;
+            })
+            .catch(function(err){
+                window.alert(err.message);
+            });
+    };
 
     $scope.selectChange = function ( data ) {
         if (data.child != undefined)
@@ -66,6 +66,10 @@ myApp.controller('MainController', ['$scope','rsync', function($scope, rsync) {
         })
     }
 
+    function proccedError(err){
+        $scope.canRun = false;
+        window.alert(err.message);
+    }
 
     function initNotRunningState( data){
         $scope.devices= data;
