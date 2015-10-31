@@ -2,80 +2,93 @@
  * Created by mlyasnikov on 30.10.2015.
  */
 
-var myApp = angular.module('my-app', [])
-    .directive('indeterminate', function(){
-    return {
-        restrict: 'A',
-        link: function($scope, element, attrs) {
-            if (scope.$eval(attrs.indeterminate))
-                element.prop("indeterminate", true)
-            else
-                element.prop("indeterminate", false)
-        }
-    }
-});
+var myApp = angular.module('my-app', []);
 
-myApp.controller('MainController', ['$scope', function($scope) {
+myApp.controller('MainController', ['$scope','rsync', function($scope, rsync) {
     "use strict";
 
-    $scope.devices =
-        [
-            {name:"Trancent 500Gb", path:"/path/download"},
-            {name:"Jet Flash 4Gb", path:"/path/download2"}
-        ];
-    $scope.selectedDevice = $scope.devices[0];
+    $scope.isSetupPage = true;
+    $scope.isRunning = false;
+    $scope.runningState = "";
 
-    $scope.ignoreFiles = [
+    var state = rsync.status();
+
+    if (state.state != "running"){
+        initNotRunningState(state.data);
+    }
+
+    rsync.onProgressChange(function(data){
+            if (data.state != "running"){
+                $scope.isRunning = false;
+                $scope.$apply();
+            } else
+            {
+                $scope.runningState = data.status;
+                $scope.$apply();
+            }
+
+        });
+
+    $scope.run = function(device){
+
+        var extraArgs = [];
+
+        if (device.dryRun == true)
+            extraArgs.push("-n");
+
+        if (device.extraArgs.length > 0)
         {
-            name: "Folder 1",
-            state: null,
-            child:
-            [
-                {name:"File 1", state: true},
-                {name:"File 2", state: false},
-                {name:"File 3", state: false},
-                {
-                    name:"Subfolder 1",
-                    state: false,
-                    child:[
-                        {name:"File 1", state: false},
-                        {name:"File 1", state: false}
-                    ]
-                }
-            ]
-        },
-        {
-            name: "Folder 1",
-            state: null,
-            child:
-                [
-                    {name:"File 1", state: false},
-                    {name:"File 2", state: false},
-                    {name:"File 3", state: false},
-                    {
-                        name:"Subfolder 1",
-                        state: false,
-                        child:[
-                            {name:"File 1", state: false},
-                            {name:"File 1", state: false}
-                        ]
-                    }
-                ]
+            extraArgs.push(device.extraArgs);
         }
-    ];
 
-    console.log($scope.ignoreFiles);
+        device.ignoreList.forEach(function (item) {
+            if (item.checked == true)
+                extraArgs.push("--exclude '" + item.name + "'");
+        })
 
-    $scope.run = function(){
-        $scope.ignoreFiles[0].state =  !$scope.ignoreFiles[0].state;
+        rsync.runRsync(device.path, extraArgs);
+        $scope.isRunning = true;
+        $scope.isSetupPage = false;
     }
 
     $scope.selectChange = function ( data ) {
         if (data.child != undefined)
             data.child.forEach(function (ch) {
-                ch.state = data.state;
+                ch.checked = data.checked;
                 $scope.selectChange(ch);
             })
-        };
+    };
+
+    $scope.selectAll = function (value) {
+        $scope.selectedDevice.ignoreList.forEach(function(item){
+            item.checked = value;
+            $scope.selectChange(item);
+        })
+    }
+
+
+    function initNotRunningState( data){
+        $scope.devices= data;
+        $scope.devices.forEach(function (dev) {
+            dev.dryRun = false;
+            dev.extraArgs = "";
+
+            var ignoreFiles = [];
+
+            dev.ignoreList.forEach(function(item){
+
+                var newItem = {
+                    checked: false,
+                    name: item
+                }
+
+                ignoreFiles.push(newItem);
+            })
+
+            dev.ignoreList = ignoreFiles;
+
+        });
+        $scope.selectedDevice = $scope.devices[0];
+    }
 
 }]);
