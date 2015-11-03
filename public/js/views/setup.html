@@ -1,0 +1,51 @@
+
+    <div class="form-group">
+        <label>Device:</label>
+        <select class="form-control" ng-model="selectedDevice"
+                ng-options="item as item.name for item in devices track by item.name">
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Path:</label>
+        <input class="form-control" ng-model="selectedDevice.path">
+    </div>
+    <div class="form-group">
+        <div class="checkbox">
+            <label><input type="checkbox" ng-model="selectedDevice.dryRun" value="">Dry run (-n)</label>
+        </div>
+    </div>
+    <div class="form-group">
+        <button class="btn btn-success" ng-disabled="!canRun" ng-click="run(selectedDevice)">Run!</button>
+    </div>
+
+    <div class="form-group">
+        <label for="comment">Rsync extra args:</label>
+        <textarea class="form-control" ng-model="selectedDevice.extraArgs" rows="2" id="comment"></textarea>
+    </div>
+
+    <div class="form-group">
+        <label class="control-label" for="comment">Ignore files:</label>
+
+        <div class="btn-group btn-group-sm">
+            <button class="btn btn-default" ng-click="selectAll(true)">Select All</button>
+            <button class="btn btn-default" ng-click="selectAll(false)">Clear selected</button>
+        </div>
+
+        <script type="text/ng-template" id="item">
+            <div class="checkbox">
+                <label><input type="checkbox" ng-change="selectChange(data)" ng-model="data.checked"
+                              indeterminate>{{data.name}}</label>
+                <ul>
+                    <li ng-repeat="data in data.child" ng-include="'item'"></li>
+                </ul>
+            </div>
+        </script>
+
+        <div>
+            <ul >
+                <li  ng-repeat="data in selectedDevice.ignoreList" ng-include="'item'">
+                </li>
+            </ul>
+        </div>
+
+    </div>

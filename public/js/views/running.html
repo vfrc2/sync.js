@@ -1,0 +1,9 @@
+
+    <div class="form-group">
+        <label>Rsync running:</label>
+        <label>{{ runningState }}</label>
+        <div class="form-group">
+            <button class="btn btn-warning" ng-hide="!isRunning" ng-click="stop()">Stop</button>
+            <button class="btn btn-success" ng-hide="isRunning" ng-click="back()">Rerun</button>
+        </div>
+    </div>

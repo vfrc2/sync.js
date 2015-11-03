@@ -2,26 +2,21 @@
  * Created by mlyasnikov on 30.10.2015.
  */
 
-var myApp = angular.module('my-app', []);
+var myApp = angular.module('my-app');
 
-myApp.controller('MainController', ['$scope','rsync', function($scope, rsync, $q) {
+myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scope, rsync, $q, $location) {
     "use strict";
 
-    $scope.isSetupPage = true;
-    $scope.isRunning = false;
-    $scope.runningState = "";
     $scope.canRun = true;
 
     rsync.status()
         .then(function(result)
         {
-            if (result.state != "running") {
-                initNotRunningState(result.data);
-            } else
-            {
-                $scope.isSetupPage = false;
-                $scope.isRunning = true;
+            if (result.state == "running") {
+                $location.path('/status/').replace();
+                return;
             }
+            initNotRunningState(result.data);
         }).catch(proccedError);
 
     $scope.run = function(device){
@@ -43,8 +38,7 @@ myApp.controller('MainController', ['$scope','rsync', function($scope, rsync, $q
 
         rsync.runRsync(device.path, extraArgs)
             .then(function(){
-                $scope.isRunning = true;
-                $scope.isSetupPage = false;
+                $location.path('/status/').replace();
             })
             .catch(function(err){
                 window.alert(err.message);

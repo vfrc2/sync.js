@@ -8,9 +8,8 @@ module.exports = new function WebService()
         app.use(express.static('public'));
         app.use(errorLog);
 
-        var rsync = require('../rsync-service');
+        app.use('/api', require('../rsync-service'));
 
-        rsync.webApi('/api', app);
         var server = app.listen(3000, function(err) {
             "use strict";
 
