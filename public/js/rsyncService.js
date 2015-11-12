@@ -22,7 +22,20 @@ myApp.factory("rsync", ['$http', '$q', function($http, $q) {
                 throw new Error("Api call error! " + err.data);
             });
 
-    }
+    };
+
+    me.sysinfo = function() {
+        return $http.get('/api/sysinfo').then(
+            function(response){
+                if (!response.data)
+                    throw new Error("Api call error! Null object!");
+                return response.data;
+            }
+        ).catch(function(err)
+            {
+                throw new Error("Api call error! " + err.data);
+            });
+    };
 
     me.runRsync = function (path, extraArgs) {
 
