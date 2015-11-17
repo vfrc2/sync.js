@@ -66,7 +66,8 @@ myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scop
     }
 
     function initNotRunningState( data){
-        $scope.canRun = true;
+
+        $scope.canRun = data.length > 0;
         $scope.devices= data;
         $scope.devices.forEach(function (dev) {
             dev.dryRun = false;

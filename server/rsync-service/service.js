@@ -8,6 +8,8 @@ function CreateRsyncService() {
 
     var child = null;
 
+    var blockdev = require("./scripts/blockinfo")
+
     this.doSync = function (config, callback) {
 
         if (!config.path) {
@@ -48,38 +50,29 @@ function CreateRsyncService() {
     this.sysinfo = function(callback){
         "use strict";
 
-        var obj =
-            [
-                {
-                    name: "Trancent 500Gb",
-                    path: "/media/usb0/downlodads/",
-                    stat: {
-                        size: 495000000,
-                        free: 4000000
-                    },
-                    ignoreList: [
-                        "movies/movie1.mkv",
-                        "sreries/serie name/series.name.s0.e0.mpg",
-                        "sreries/serie name/series.name.s0.e2.mpg"
-                    ]
-                },
-                {
-                    name: "JetFlash 4Gb",
-                    path: "/media/usb1/transfer/",
-                    stat: {
-                        size: 3000000,
-                        free: 1000000
-                    },
-                    ignoreList: [
-                        "movies/movie1.mkv",
-                        "sreries/serie name/series.name.s0.e0.mpg",
-                        "sreries/serie name/series.name.s0.e2.mpg"
-                    ]
-                }];
+        blockdev.getDevInfo().then(
+            function(devices) {
+                var obj = [];
+                devices.forEach(function(dev){
 
-        setTimeout(function () {
-            callback(null, obj);
-        },2000);
+                    obj.push(
+                        {
+                            name: dev.model,
+                            path: dev.mount,
+                            stat: {
+                                size: dev.size,
+                                free: dev.available,
+                                used: dev.used
+                            },
+                            ignoreList: []
+                        }
+                    )
+
+                });
+
+                callback(null, obj);
+            }
+        );
 
     };
 
