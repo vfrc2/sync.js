@@ -7,7 +7,7 @@ var myApp = angular.module('my-app');
 myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scope, rsync, $q, $location) {
     "use strict";
 
-    $scope.canRun = true;
+    $scope.canRun = false;
 
     rsync.status()
         .then(function(result)
@@ -16,7 +16,7 @@ myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scop
                 $location.path('/status/').replace();
                 return;
             }
-            initNotRunningState(result.data);
+            rsync.sysinfo().then(initNotRunningState);
         }).catch(proccedError);
 
     $scope.run = function(device){
@@ -66,6 +66,7 @@ myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scop
     }
 
     function initNotRunningState( data){
+        $scope.canRun = true;
         $scope.devices= data;
         $scope.devices.forEach(function (dev) {
             dev.dryRun = false;

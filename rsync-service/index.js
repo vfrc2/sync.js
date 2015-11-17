@@ -5,66 +5,23 @@ var EventEmitter = require('events').EventEmitter;
 
 var RsyncError = require('./error');
 
-// run rsync
-// 
-// doSync(config, function(err, result))
-//
+/**
+ * Module of web api for rsync
+ *
+ * Api:
+ * /status - return current status of rsync daemon (running or not)
+ * /sysinfo - return info about usb devices connected to server
+ * /start - exec rsync daemon need path and args
+ * /stop - stop rsync daemon
+ * /websockerStatus - connect to web socket to recieve current status
+ */
 
-function CreateRsyncService()
-{
-    var curentRunning = null;
-    
-    var child = null;
+function CreateWebService(){
+    "use strict";
 
-    var service = {
-        
-        doSync: function(config, callback) {
-
-            if (!config.path) {
-                callback(new RsyncError("Null path argument!"));
-                return;
-            }
-
-            //callback(new RsyncError("test error!"));
-            if (child != null) {
-                callback(new RsyncError("Already running!"));
-                return;
-            }
-
-            setTimeout(function(){
-                "use strict";
-                child = {name: 'Running...'}
-            }, 5000);
-
-            callback(null);
-            //child = spawn('rsync');
-            //
-            //child.on('exit', function(exitCode) {
-            //    if (exitCode > 0)
-            //        callback(new RsyncError('Bad exit code1: ' + exitCode));
-            //
-            //    callback(null);
-            //});
-            //
-            //child.on('error', function(error) {
-            //    callback(new Error('Bad exit code2: ' + error.message));
-            //});
-        },
-
-        isRunning: function(){
-            "use strict";
-
-            if (child == null)
-                return null;
-            else
-                return child.name;
-        }
-
-    };
-
-    service.router = InitRouter(service);
-
-    return service;
+    var service = require('./service');
+    console.log(service);
+    return  InitRouter(service);
 }
 
 function InitRouter(service){
@@ -78,7 +35,6 @@ function InitRouter(service){
     router.use( rsyncErrorHandler);
 
     router.get('/status', function(req,res){
-        //res.statusCode= 404;
 
         var stat = service.isRunning();
 
@@ -89,38 +45,11 @@ function InitRouter(service){
                 status: stat.name
             }
         } else {
-
-        var obj =
-        {
-            state: "not running",
-            data: [
-                {
-                    name: "Trancent 500Gb",
-                    path: "/media/usb0/downlodads/",
-                    stat: {
-                        size: 495000000,
-                        free: 4000000
-                    },
-                    ignoreList: [
-                        "movies/movie1.mkv",
-                        "sreries/serie name/series.name.s0.e0.mpg",
-                        "sreries/serie name/series.name.s0.e2.mpg"
-                    ]
-                },
-                {
-                    name: "JetFlash 4Gb",
-                    path: "/media/usb1/transfer/",
-                    stat: {
-                        size: 3000000,
-                        free: 1000000
-                    },
-                    ignoreList: [
-                        "movies/movie1.mkv",
-                        "sreries/serie name/series.name.s0.e0.mpg",
-                        "sreries/serie name/series.name.s0.e2.mpg"
-                    ]
-                }]
-        }};
+            var obj = {
+                state: "not running",
+                status: null
+            }
+        }
 
         res.setHeader('Content-Type','application/json');
         res.end(JSON.stringify(obj));
@@ -137,6 +66,20 @@ function InitRouter(service){
             res.statusCode = 200;
             res.end();
         });
+    });
+
+    router.get('/sysinfo', function (req, res, next) {
+
+        service.sysinfo(function(err, result){
+            if (err){
+                next(err);
+                return;
+            }
+
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result));
+        });
+
     });
 
     router.post('/stop', function(req,res){
@@ -157,7 +100,7 @@ function InitRouter(service){
     return router;
 }
 
-module.exports = new CreateRsyncService().router;
+module.exports = CreateWebService();
 
 
 

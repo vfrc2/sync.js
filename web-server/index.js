@@ -1,7 +1,8 @@
 
-module.exports = new function WebService()
+function WebService()
 {
     this.startService = function () {
+        console.log("Init new web server!")
         var express = require('express');
         var app = express();
 
@@ -36,3 +37,5 @@ module.exports = new function WebService()
 
     }
 };
+
+module.exports = new WebService();
