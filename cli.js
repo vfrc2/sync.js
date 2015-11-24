@@ -47,5 +47,3 @@
 //          remote: server.pyt.lan:share/videos
 //
 
-var webService = require('./web-server');
-webService.startService();

@@ -11,11 +11,12 @@
   "dependencies": {
     "body-parser": "^1.14.1",
     "express": "^4.13.3",
-    "node-promise": "^0.5.12",
     "promise": "^7.0.4",
     "stream-splitter": "^0.3.2"
   },
   "devDependencies": {
-    "grunt": "^0.4.5"
+    "chai": "^3.4.1",
+    "jasmine": "^2.3.2",
+    "mocha": "^2.3.4"
   }
 }

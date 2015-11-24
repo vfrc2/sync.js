@@ -20,7 +20,7 @@ myApp.controller('statusCtrl', ['$scope','rsync','$q','$location', function($sco
         }).catch(proccedError);
 
     $scope.stop = function(){
-        rsync.stop().then(function(){
+        rsync.stopRsync().then(function(){
             $scope.isRunning = false;
         }).catch(proccedError);
     };
