@@ -25,6 +25,7 @@ function spawn(prog, args, option) {
 
         var stdout = child.stdout.pipe(ssplt('\n'));
 
+
         resolve({
             child: child,
             stdout: stdout,

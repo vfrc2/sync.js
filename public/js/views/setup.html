@@ -2,14 +2,14 @@
     <div class="form-group">
         <label>Device:</label>
         <select class="form-control" ng-model="selectedDevice"
-                ng-options="item as item.name for item in devices track by item.name">
+                ng-options="item as item.model for item in devices track by item.mount">
         </select>
         <label>Space: {{ selectedDevice.stat.used | bytes }} / {{ selectedDevice.stat.size | bytes }}
             (Free: {{ selectedDevice.stat.free | bytes }})</label>
     </div>
     <div class="form-group">
         <label>Path:</label>
-        <input class="form-control" ng-model="selectedDevice.path">
+        <input class="form-control" ng-model="selectedDevice.mount">
     </div>
     <div class="form-group">
         <div class="checkbox">

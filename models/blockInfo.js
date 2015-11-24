@@ -2,144 +2,135 @@
  * Created by vfrc2 on 17.11.15.
  */
 
-var proc = require('child_process');
-var ssplt = require("stream-splitter");
 var Promise = require('promise');
 var RsyncError = require('./../helpers/RsyncError');
+var sr = require('./../helpers/scriptRunner');
 
 function getDevInfo() {
-    return new Promise(_getDevInfo);
-};
 
-function _getDevInfo(resolve, reject) {
+    var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh");
 
-    var mnt = proc.spawn(__dirname + "/scripts/blockinfo.sh");
+    return bi.then(function (process) {
 
-    mnt.on('error', function (err) {
-        reject(new Error("Error while start sysinfo! " + err));
-    });
+        var promises = [];
 
-    var lmnt = mnt.stdout.pipe(ssplt("\n"));
-    lmnt.encoding = "utf8";
+        process.stdout.encoding = 'utf8';
 
-    var promises = [];
+        process.stdout.on("token", function (token) {
 
-    lmnt.on("token", function (token) {
+            try {
+                var tkn = token.split(" ", 2);
 
-        var tkn = token.split(" ", 2);
-
-        var dev = {
-            dev: tkn[0],
-            mount: tkn[1]
-        };
+                var dev = {
+                    dev: tkn[0],
+                    mount: tkn[1]
+                };
 
 
-        promises.push(
-            Promise.all([getDfinfo(dev), getUdev(dev)])
-                .then(function (result) {
-                    fillDev(dev, result);
-                    return dev;
-                })
-        );
+                promises.push(
+                    Promise.all(
+                        [getDfinfo(dev), getUdev(dev)])
+                        .then(
+                        function (result) {
+                            _fillDev(dev, result);
+                            return dev;
+                        })
+                );
+            } catch (err) {
 
-    });
+            }
+        });
 
-    mnt.on("close", function (exitcode) {
-
-        if (exitcode != 0) {
-            reject(new Error("Sys info not exit clearly! " + exitcode));
-            return;
-        }
-
-        Promise.all(promises).then(function (result) {
-            resolve(result);
+        return process.done.then(function (exitcode) {
+            return Promise.all(promises);
         });
 
     });
+
 }
 
 function getDfinfo(dev) {
-    return new Promise(
-        function (resolve, reject) {
 
-            var df = proc.spawn("df", [dev.dev,
-                "--output=used,avail,size",
-                "--block-size=1"]);
+    var df = sr.spawn("df", [dev.dev,
+        "--output=used,avail,size",
+        "--block-size=1"]);
 
-            df.on('error', function (err) {
-                reject(err);
-            });
+    return df.then(function (process) {
 
-            var buffer = "";
+        var buffer = "";
 
-            df.stdout.on('data', function (data) {
-                buffer += data;
-            });
+        process.stdout.encoding = 'utf8';
+        process.stdout.on("token", function (token) {
 
-            df.on('close', function (exitcode) {
+            buffer += token + '\n';
 
-                if (exitcode != 0) {
-                    reject(new Error("df exit with " + exitcode));
-                    return;
-                }
+        });
 
-                var lines = buffer.split("\n", 2);
-                if (lines < 2) {
-                    reject(new Error("Error parsing df output"));
-                    return;
-                }
+        return process.done.then(function (exitcode) {
 
-                var sizes = lines[1].split(" ", 3);
+            if (exitcode != 0)
+                throw new Error("df exit with " + exitcode);
 
-                if (sizes < 3) {
-                    reject(new Error("Error parsing df output"));
-                    return;
-                }
-
-                var data = [];
-
-                data.push({name: "used", value: parseInt(sizes[0])});
-                data.push({name: "available", value: parseInt(sizes[1])});
-                data.push({name: "size", value: parseInt(sizes[2])})
-
-                resolve(data);
-
-            });
-        }
-    );
+            return _parseDfBuffer(buffer);
+        });
+    });
 }
 
 function getUdev(dev) {
-    return new Promise(function(resolve, reject){
 
-        var uadm = proc.spawn("udevadm", ["info", "-a", dev.dev]);
+    var uadm = sr.spawn("udevadm", ["info", "-a", dev.dev]);
 
-        uadm.on('error', function (error) {
-            reject(error);
-        });
-
-        var ludev = uadm.stdout.pipe(ssplt("\n"));
-        ludev.encoding = "utf8";
+    return uadm.then(function (result) {
 
         var data = [];
 
-        ludev.on("token", function (token) {
+        var errs = [];
 
-            var atr = parseUdevAtr(token);
-            if (atr != null) {
-                data.push(atr);
+        result.stdout.encoding = 'utf8';
+        result.stdout.on('token', function (token) {
+            try {
+                var atr = _parseUdevAtr(token);
+
+                if (atr != null) {
+                    data.push(atr);
+                }
+            } catch (err) {
+                errs.push(err)
             }
-
         });
 
-        ludev.on("done", function () {
-            resolve(data);
+        return result.done.then(function (result) {
+
+            if (errs.length > 0)
+                throw(new Error("Error parse udev output " + errs));
+
+            return data;
         })
 
     });
 }
 
-function parseUdevAtr(token) {
+function _parseDfBuffer(buffer) {
+    var lines = buffer.split("\n", 2);
+
+    if (lines.length < 2)
+        throw(new Error("Error parsing df output"));
+
+    var sizes = lines[1].split(" ", 3);
+
+    if (sizes.length < 3)
+        throw(new Error("Error parsing df output"));
+
+    var data = [];
+
+    data.push({name: "used", value: parseInt(sizes[0])});
+    data.push({name: "available", value: parseInt(sizes[1])});
+    data.push({name: "size", value: parseInt(sizes[2])})
+
+    return data;
+}
+
+function _parseUdevAtr(token) {
     var tkn = token.split("==", 2);
 
     if (tkn.length < 2)
@@ -158,12 +149,12 @@ function parseUdevAtr(token) {
         return null;
 }
 
-function fillDev(dev, atrs) {
+function _fillDev(dev, atrs) {
 
     atrs.forEach(function (atr) {
 
         if (Array.isArray(atr)) {
-            fillDev(dev, atr);
+            _fillDev(dev, atr);
         }
         else {
             dev[atr.name] = atr.value;

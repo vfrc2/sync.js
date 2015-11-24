@@ -20,7 +20,6 @@ var server = app.listen(3000, function (err) {
 
 function errorLog(err, req, res, next) {
     "use strict";
-    console.log("Error: " + err);
     console.log(err.stack);
     console.log("***************");
     next(err);
