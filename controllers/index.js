@@ -4,13 +4,16 @@
  * Index for web server
  *
  */
-var express = require('express');
-var router = express.Router();
 
-router.use('/api', require('./rsync'));
 
-//router.use('/', function(req,res,next){
-//    res.redirect('index.html');
-//});
+function createRouter(io) {
+    var express = require('express');
+    var router = express.Router();
 
-module.exports = router;
+    router.use('/api', require('./rsync'));
+    require('./socket')(io);
+
+    return router;
+}
+
+module.exports = createRouter;

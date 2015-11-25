@@ -4,91 +4,104 @@
 
 var myApp = angular.module('my-app');
 
-myApp.controller('setupCtrl', ['$scope','rsync','$q','$location', function($scope, rsync, $q, $location) {
-    "use strict";
+myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
+    function ($scope, rsync, socket, $q, $location) {
+        "use strict";
 
-    $scope.canRun = false;
 
-    rsync.status()
-        .then(function(result)
-        {
-            if (result.state == "running") {
-                $location.path('/status/').replace();
-                return;
+        $scope.canRun = false;
+
+        socket.on('rsync.start',function(){
+            $location.path('/status/').replace();
+        });
+
+        rsync.status()
+            .then(function (result) {
+                if (result.state == "running") {
+                    $location.path('/status/').replace();
+                    return;
+                }
+                rsync.sysinfo().then(initNotRunningState);
+            }).catch(proccedError);
+
+        $scope.run = function (device) {
+
+            var extraArgs = [];
+
+            if (device.dryRun == true)
+                extraArgs.push("-n");
+
+            if (device.extraArgs.length > 0) {
+                extraArgs.push(device.extraArgs);
             }
-            rsync.sysinfo().then(initNotRunningState);
-        }).catch(proccedError);
 
-    $scope.run = function(device){
+            device.ignoreList.forEach(function (item) {
+                if (item.checked == true)
+                    extraArgs.push("--exclude '" + item.name + "'");
+            });
 
-        var extraArgs = [];
+            rsync.runRsync(device.mount, extraArgs)
+                .then(function () {
+                    $location.path('/status/').replace();
+                })
+                .catch(function (err) {
+                    window.alert(err.message);
+                });
+        };
 
-        if (device.dryRun == true)
-            extraArgs.push("-n");
+        $scope.selectChange = function (data) {
+            if (data.child != undefined)
+                data.child.forEach(function (ch) {
+                    ch.checked = data.checked;
+                    $scope.selectChange(ch);
+                })
+        };
 
-        if (device.extraArgs.length > 0)
-        {
-            extraArgs.push(device.extraArgs);
+        $scope.selectAll = function (value) {
+            $scope.selectedDevice.ignoreList.forEach(function (item) {
+                item.checked = value;
+                $scope.selectChange(item);
+            })
         }
 
-        device.ignoreList.forEach(function (item) {
-            if (item.checked == true)
-                extraArgs.push("--exclude '" + item.name + "'");
-        })
+        function proccedError(err) {
+            $scope.canRun = false;
+            window.alert(err.message);
+        }
 
-        rsync.runRsync(device.path, extraArgs)
-            .then(function(){
-                $location.path('/status/').replace();
-            })
-            .catch(function(err){
-                window.alert(err.message);
-            });
-    };
+        function initNotRunningState(data) {
 
-    $scope.selectChange = function ( data ) {
-        if (data.child != undefined)
-            data.child.forEach(function (ch) {
-                ch.checked = data.checked;
-                $scope.selectChange(ch);
-            })
-    };
+            $scope.canRun = data.length > 0;
+            $scope.devices = data;
+            $scope.devices.forEach(function (dev) {
+                dev.dryRun = false;
+                dev.extraArgs = "";
 
-    $scope.selectAll = function (value) {
-        $scope.selectedDevice.ignoreList.forEach(function(item){
-            item.checked = value;
-            $scope.selectChange(item);
-        })
-    }
+                var ignoreFiles = [];
 
-    function proccedError(err){
-        $scope.canRun = false;
-        window.alert(err.message);
-    }
+                if (dev.ignoreList != undefined) {
+                    dev.ignoreList.forEach(function (item) {
 
-    function initNotRunningState( data){
+                        var newItem = {
+                            checked: false,
+                            name: item
+                        }
 
-        $scope.canRun = data.length > 0;
-        $scope.devices= data;
-        $scope.devices.forEach(function (dev) {
-            dev.dryRun = false;
-            dev.extraArgs = "";
-
-            var ignoreFiles = [];
-
-            dev.ignoreList.forEach(function(item){
-
-                var newItem = {
-                    checked: false,
-                    name: item
+                        ignoreFiles.push(newItem);
+                    })
                 }
 
-                ignoreFiles.push(newItem);
-            })
+                dev.ignoreList = ignoreFiles;
 
-            dev.ignoreList = ignoreFiles;
+            });
 
-        });
-        $scope.selectedDevice = $scope.devices[0];
-    }
+            $scope.selectedDevice = $scope.devices[0];
 
-}]);
+            $scope.$on('$destroy', function (event) {
+                socket.removeAllListeners();
+                // or something like
+                // socket.removeListener(this);
+            });
+        }
+
+    }]);

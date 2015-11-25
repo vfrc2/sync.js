@@ -1,14 +1,6 @@
 var express = require('express');
 var app = express();
 
-app.use(express.static('public'));
-
-app.use(require("./controllers"));
-
-app.use(errorLog);
-
-app.use(errorHandler);
-
 var server = app.listen(3000, function (err) {
     "use strict";
 
@@ -17,6 +9,16 @@ var server = app.listen(3000, function (err) {
 
     console.log("Serever start at http://%s:%s", server.address().address, server.address().port);
 });
+
+var io = require("socket.io")(server);
+
+app.use(express.static('public'));
+
+app.use(require("./controllers")(io));
+
+app.use(errorLog);
+
+app.use(errorHandler);
 
 function errorLog(err, req, res, next) {
     "use strict";

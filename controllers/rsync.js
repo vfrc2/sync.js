@@ -15,17 +15,17 @@ var bodyParser = require('body-parser');
 var router = express.Router();
 
 var RsyncError = require('./../helpers/RsyncError');
-var rsyncService = require('./../models/rsync');
+var rsync = require('./../models/rsync');
 var blockInfo = require('./../models/blockInfo');
 
 router.use(bodyParser.json());
 
 router.get('/status', function (req, res) {
 
-    if (rsyncService.isRunning()) {
+    if (rsync.isRunning()) {
         var obj = {
             state: "running",
-            status: rsyncService.getBuffer()
+            status: rsync.getBuffer()
         }
     } else {
         var obj = {
@@ -40,19 +40,9 @@ router.get('/status', function (req, res) {
 
 router.post('/start', function (req, res, next) {
 
-    rsyncService.doSync(req.body,
-        function (progress) {
-            //console.log("Proc: "+progress);
-        },
-        function (err) {
-            if (err) {
-                return next(err);
-            }
-
-
-            res.statusCode = 200;
-            res.end();
-        });
+    rsync.start(req.body).then(
+        _getSentOk(req,res),
+        _getErrAnswer(req,res,next));
 });
 
 router.get('/sysinfo', function (req, res, next) {
@@ -61,25 +51,33 @@ router.get('/sysinfo', function (req, res, next) {
 
     p.then(
         function (result) {
+
             res.setHeader('Content-Type', 'application/json');
             res.end(JSON.stringify(result));
         },
-        function (err) {
-            next(err);
-        });
+        _getErrAnswer(req,res,next));
 });
 
 router.post('/stop', function (req, res, next) {
 
-    rsyncService.stopRsync(function (err) {
-        if (err) {
-            next(err);
-        }
-        res.statusCode = 200;
-        res.end();
-    })
+    rsync.stop().then(
+        _getSentOk(req,res),
+        _getErrAnswer(req,res,next)
+    );
 
 });
+
+function _getSentOk(req,res){
+    return function(){
+        res.statusCode = 200;
+        res.end();
+    }
+}
+function _getErrAnswer(req, res, next){
+    return function(){
+        next(err);
+    }
+}
 
 router.use(rsyncErrorHandler);
 
@@ -91,6 +89,7 @@ function rsyncErrorHandler(err, req, res, next) {
     }
     next(err);
 }
+
 
 module.exports = router;
 

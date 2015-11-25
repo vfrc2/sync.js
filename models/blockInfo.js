@@ -8,7 +8,11 @@ var sr = require('./../helpers/scriptRunner');
 
 function getDevInfo() {
 
-    var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh");
+    var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
+        [],
+        {
+            pipe: require("stream-splitter")('\n')
+        });
 
     return bi.then(function (process) {
 
@@ -53,7 +57,9 @@ function getDfinfo(dev) {
 
     var df = sr.spawn("df", [dev.dev,
         "--output=used,avail,size",
-        "--block-size=1"]);
+        "--block-size=1"], {
+        pipe: require("stream-splitter")('\n')
+    });
 
     return df.then(function (process) {
 
@@ -78,7 +84,10 @@ function getDfinfo(dev) {
 
 function getUdev(dev) {
 
-    var uadm = sr.spawn("udevadm", ["info", "-a", dev.dev]);
+    var uadm = sr.spawn("udevadm", ["info", "-a", dev.dev],
+        {
+            pipe: require("stream-splitter")('\n')
+        });
 
     return uadm.then(function (result) {
 

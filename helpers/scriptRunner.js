@@ -3,37 +3,46 @@
  */
 
 var proc = require('child_process');
-var ssplt = require("stream-splitter");
 var Promise = require('promise');
 
 
-function spawn(prog, args, option) {
+function spawn(prog, args, options) {
 
     var stderrBuffer = "";
+
+    if (!options)
+        options = {
+        }
 
     var p = new Promise(function (resolve, reject) {
 
         var child = proc.spawn(prog, args);
+        child.err = null;
 
         child.on('error', function (err) {
-            reject(err);
+            child.err = err;
         });
 
         child.stderr.on('data', function (data) {
             stderrBuffer += data;
         });
 
-        var stdout = child.stdout.pipe(ssplt('\n'));
-
+        var stdout =  child.stdout;
+        if (options.pipe)
+            stdout = stdout.pipe(options.pipe);
 
         resolve({
             child: child,
             stdout: stdout,
             done: new Promise(function(resolve, reject){
                 child.on('close', function (exitcode) {
-                    if (exitcode != 0) {
-                        reject(new Error("Error execute " + prog + " " + args + " :\n" + stderrBuffer));
-                    }
+                    if (child.err)
+                        reject(child.err);
+
+                    if (exitcode != 0)
+                        reject(new Error("Error ("+ exitcode+") "
+                            + prog + " " + args + " \n" + stderrBuffer));
+
                     resolve(exitcode);
                 });
             })

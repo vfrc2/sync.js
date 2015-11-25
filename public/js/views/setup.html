@@ -4,8 +4,8 @@
         <select class="form-control" ng-model="selectedDevice"
                 ng-options="item as item.model for item in devices track by item.mount">
         </select>
-        <label>Space: {{ selectedDevice.stat.used | bytes }} / {{ selectedDevice.stat.size | bytes }}
-            (Free: {{ selectedDevice.stat.free | bytes }})</label>
+        <label>Space: {{ selectedDevice.used | bytes }} / {{ selectedDevice.size | bytes }}
+            (Free: {{ selectedDevice.available | bytes }})</label>
     </div>
     <div class="form-group">
         <label>Path:</label>
