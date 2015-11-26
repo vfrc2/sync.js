@@ -38,7 +38,7 @@
                 <label><input type="checkbox" ng-change="selectChange(data)" ng-model="data.checked"
                               indeterminate>{{data.name}}</label>
                 <ul>
-                    <li ng-repeat="data in data.child" ng-include="'item'"></li>
+                    <li ng-repeat="data in data.childs" ng-include="'item'"></li>
                 </ul>
             </div>
         </script>

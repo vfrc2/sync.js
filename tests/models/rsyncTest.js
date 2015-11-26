@@ -8,17 +8,46 @@ describe('Running rsync with cat of real', function () {
         var rsyncCmd = {
             prog: "cat",
             args: [
-                __dirname + "/sync-to-hdd.log"
+                __dirname + "/copy-log.log"
             ]
         };
 
-        var rsync = require("./../../models/rsync");
+        run(rsyncCmd, done);
+
+    });
+
+    it('shouldrun with -n', function (done) {
+        var rsyncCmd = {
+            prog: "cat",
+            args: [
+                __dirname + "/copy-log-n.log"
+            ]
+        };
+
+        run(rsyncCmd, done);
+
+    });
+
+    var Rsync = require("./../../models/rsync").create;
+
+    function run(rsyncCmd, done){
+        var rsync = new Rsync();
 
         rsync._setCmd(rsyncCmd);
 
-        var p = rsync.start({path: "blablabal"}, function (file, perc) {
-            console.log("File: " + file + " " +perc)
+        rsync.on('progress', function(data){
+            console.log(data);
         });
+
+        rsync.on('file', function(data){
+            console.log(data);
+        });
+
+        rsync.on('rawoutput', function(data){
+            console.log(data);
+        });
+
+        var p = rsync.start({path: "blablabal"});
 
         p.then(function (res) {
 
@@ -27,5 +56,5 @@ describe('Running rsync with cat of real', function () {
             done();
 
         }).done();
-    });
+    }
 });

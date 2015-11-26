@@ -4,7 +4,7 @@
 
 function createApiSocket(io){
 
-    var rsync = require('./../models/rsync');
+    var rsync = require('./../models/rsync').service;
 
     io.on('connection', function (socket) {
 

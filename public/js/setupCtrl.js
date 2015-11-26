@@ -35,10 +35,16 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
                 extraArgs.push(device.extraArgs);
             }
 
-            device.ignoreList.forEach(function (item) {
+            device.ignoreList.forEach(checkItem);
+
+            function checkItem(item){
+
                 if (item.checked == true)
                     extraArgs.push("--exclude '" + item.name + "'");
-            });
+
+                if (item.childs && item.childs.length > 0)
+                    item.childs.forEach(checkItem);
+            }
 
             rsync.runRsync(device.mount, extraArgs)
                 .then(function () {
@@ -80,15 +86,16 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
                 var ignoreFiles = [];
 
                 if (dev.ignoreList != undefined) {
-                    dev.ignoreList.forEach(function (item) {
 
+                    dev.ignoreList.forEach(function (item) {
                         var newItem = {
                             checked: false,
-                            name: item
+                            name: item.filename,
+                            //childs: []
                         }
 
                         ignoreFiles.push(newItem);
-                    })
+                    });
                 }
 
                 dev.ignoreList = ignoreFiles;

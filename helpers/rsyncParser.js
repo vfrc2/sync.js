@@ -16,6 +16,7 @@
         stream = new Stream();
         buf = buffers();
 
+        var lastFilename = null;
         var delim = [
             ['\n', 1],
             ['\r', 1]
@@ -29,14 +30,14 @@
 
             var indexes = [];
 
-            for(var i=0; i<delim.length; i++){
+            for (var i = 0; i < delim.length; i++) {
                 if ((index = buf.indexOf(delim[i][0], Math.max(finalIndex, 0))) > -1)
                     indexes.push({index: index, len: delim[i][1]});
             }
 
             var min = indexes[0];
 
-            for(var i=1; i<indexes.length; i++){
+            for (var i = 1; i < indexes.length; i++) {
                 if (min.index > indexes[i].index)
                     min = indexes[i];
             }
@@ -44,11 +45,31 @@
             return min;
         };
 
+        var fileExpr = (/^.f.*:(.*):/gim);
+        var progressExpr = (/^\s*(\d*\.?\d*[kmg]?)?\s*(\d{1,3}%)\s*(.*\/s)\s*(\d*:\d*:\d*)/igm);
+
         emitToken = function (token) {
             if (stream.encoding) {
                 token = token.toString(stream.encoding);
             }
-            return stream.emit("token", token);
+
+            if ((m = fileExpr.exec(token)) && m.length > 1) {
+                lastFilename = m[1].toString();
+                return stream.emit("file",
+                    {
+                        filename: lastFilename
+                    })
+            }
+
+            if (lastFilename && (m = progressExpr.exec(token)) && m.length > 4)
+                return stream.emit("progress",
+                    {
+                        filename: lastFilename,
+                        size: m[1],
+                        percent: m[2],
+                        speed: m[3],
+                        est: m[4]
+                    })
         };
 
         doSplit = function () {

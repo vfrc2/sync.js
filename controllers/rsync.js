@@ -15,7 +15,7 @@ var bodyParser = require('body-parser');
 var router = express.Router();
 
 var RsyncError = require('./../helpers/RsyncError');
-var rsync = require('./../models/rsync');
+var rsync = require('./../models/rsync').service;
 var blockInfo = require('./../models/blockInfo');
 
 router.use(bodyParser.json());
@@ -74,7 +74,7 @@ function _getSentOk(req,res){
     }
 }
 function _getErrAnswer(req, res, next){
-    return function(){
+    return function(err){
         next(err);
     }
 }

@@ -5,7 +5,6 @@
 var proc = require('child_process');
 var Promise = require('promise');
 
-
 function spawn(prog, args, options) {
 
     var stderrBuffer = "";
@@ -39,9 +38,11 @@ function spawn(prog, args, options) {
                     if (child.err)
                         reject(child.err);
 
-                    if (exitcode != 0)
-                        reject(new Error("Error ("+ exitcode+") "
-                            + prog + " " + args + " \n" + stderrBuffer));
+                    if (exitcode != 0) {
+                        reject(new Error("Error (" + exitcode + ") "
+                            + prog  + " \n" + stderrBuffer));
+                        return;
+                    }
 
                     resolve(exitcode);
                 });

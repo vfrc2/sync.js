@@ -1,9 +1,6 @@
 /**
  * Created by mlyasnikov on 12.11.2015.
  */
-
-var ssplt = require("stream-splitter");
-var proc = require('child_process');
 var Promise = require('promise');
 var events = require('events');
 
@@ -11,149 +8,129 @@ var RsyncError = require("./../helpers/RsyncError");
 
 var sr = require("./../helpers/scriptRunner");
 
-var child = null;
+function createRsync() {
+    "use strict";
 
-var rsyncCmd = {
-    prog: "cat",
-    args: [__dirname + '/../tests/models/sync-to-hdd.log']
-};
-
-var e = new events.EventEmitter();
-
-function start(config) {
-
-    if (!config)
-        return Promise.reject(new RsyncError("Null config argument!"));
-
-    if (!config.path)
-        return Promise.reject(new RsyncError("Null path argument!"));
-
-    if (this.isRunning())
-        return Promise.reject(new RsyncError("Already running!"));
+    var child = null;
+    var eventEmiter = new events.EventEmitter();
 
 
-    return sr.spawn(rsyncCmd.prog, rsyncCmd.args,
-        {
-            detached: false,
-            pipe: require('./../helpers/rsyncParser')()
-        })
-        .then(function (res) {
+    this.rsyncCmd = {
+        prog: "cat",
+        args: [__dirname + '/../tests/models/copy-log.log']
+    };
 
-            child = res;
+    this.start = start;
+    this.stop = stop;
+    this.getBuffer = getBuffer;
+    this.isRunning = isRunning;
+    this.on = function(event, calback){
+        eventEmiter.on(event,calback);
+    };
+    this.removeAllListeners = function(){
+        eventEmiter.removeAllListeners();
+    };
+    this._setCmd = function (cmd){
+        this.rsyncCmd = cmd;
+    };
 
-            child.isRun = true;
-            child.buffer = "";
 
-            _emitStart({title:"Process started"});
+    /***
+     * Start rsync with config
+     * @param config
+     * {
+     *  path: path to target dir
+     *  extraArgs: dop args for rsync
+     * }
+     * @returns promise
+     */
+    function start(config) {
 
-            res.stdout.encoding = "utf8";
-            res.stdout.on('token', function (token) {
-                child.buffer += token + "\n";
-                _emitRaw(token+"\n");
-                var prog = _parseProgressToken(token);
-                if (prog)
-                    _emitProgress({title:"Progress", state: prog});
+        if (!config)
+            return Promise.reject(new RsyncError("Null config argument!"));
 
-            });
+        if (!config.path)
+            return Promise.reject(new RsyncError("Null path argument!"));
 
-            return res.done.then(function (exitcode) {
-                child.isRun = false;
-                _emitEnd({exitcode: exitcode});
-                return exitcode;
-            }, function (err) {
-                child.isRun = false;
-                _emitEnd({exitcode: -1});
+        if (this.isRunning())
+            return Promise.reject(new RsyncError("Already running!"));
+
+        var args = this.rsyncCmd.args;
+
+        if (config.extraArgs)
+            args = args.concat(config.extraArgs);
+
+        //args.push(config.path);
+
+        return sr.spawn(this.rsyncCmd.prog, args,
+            {
+                detached: false,
+                pipe: require('./../helpers/rsyncParser')()
+            })
+            .then(function (res) {
+
+                res.isRun = true;
+                res.buffer = "";
+                res.lastProceedFile = null;
+
+                child = res;
+
+                eventEmiter.emit('start', {title: "Process started"});
+
+                res.stdout.encoding = "utf8";
+                res.stdout.on('file', function (token) {
+                    eventEmiter.emit('file', token);
+                });
+                res.stdout.on('progress', function (token) {
+                    eventEmiter.emit('progress', token);
+                });
+
+                res.child.stdout.encoding = 'utf8';
+                res.child.stdout.on('data', function(data){
+                    eventEmiter.emit('rawoutput', data);
+                })
+
+                return res.done.then(function (exitcode) {
+                    res.isRun = false;
+                    eventEmiter.emit('stop', {exitcode: exitcode});
+                    return exitcode;
+                }, function (err) {
+                    res.isRun = false;
+                    eventEmiter.emit('stop', {exitcode: exitcode});
+                    throw(err);
+                });
+            }, function(err){
                 throw(err);
             });
-        });
-};
+    }
 
-function stop() {
-    "use strict";
+    function stop() {
+        "use strict";
 
-    if (child != null && !child.isRun)
+        if (child != null && !child.isRun)
+            throw new RsyncError("Rsync not running!");
+
+        child.kill("SIGTERM");
+    }
+
+    function getBuffer() {
+        "use strict";
+
+        if (child != null)
+            return child.buffer;
+
         throw new RsyncError("Rsync not running!");
-
-    child.child.kill("SIGTERM");
-
-};
-
-function getBuffer() {
-    "use strict";
-
-    if (child != null)
-        return child.buffer;
-
-    throw new RsyncError("Rsync not running!");
-};
-
-function isRunning() {
-    "use strict";
-
-    if (child != null)
-        return child.isRun;
-    else
-        return false;
-};
-//32.77K   0%    0.00kB/s    0:00:00
-var percentExpr = new RegExp;
-var lastProceedFile = null;
-function _parseProgressToken(token) {
-
-
-    if (!lastProceedFile) {
-        if (token.length > 0)
-            lastProceedFile = token;
-        return null;
     }
 
-    //(558.40M)  (90%)   (18.73MB/s)    (0:00:03)
-    var mtch = (/\s*(\d*.\d*[kmg])\s*(\d{1,3}%)\s*(.*\/s)\s*(\d*:\d*:\d*)/igm).exec(token);
+    function isRunning() {
+        "use strict";
 
-
-    if (mtch && mtch.length > 4) {
-        return {
-            file: lastProceedFile,
-            size: mtch[1].trim(),
-            percent: mtch[2].trim(),
-            speed: mtch[3].trim(),
-            est: mtch[4].trim()
-        }
-    } else {
-        if (token.length > 0)
-            lastProceedFile = token;
-        return null;
+        if (child != null)
+            return child.isRun;
+        else
+            return false;
     }
 }
 
-function _setCmd(value) {
-    rsyncCmd = value;
-}
-
-function _emitProgress(data){
-
-    e.emit('progress', data);
-
-}
-
-function _emitStart(data) {
-    e.emit('start', data);
-
-}
-
-function _emitEnd(data){
-    e.emit('stop', data)
-}
-
-function _emitRaw(data){
-    e.emit('rawoutput', data);
-}
-
-module.exports.start = start;
-module.exports.stop = stop;
-module.exports.isRunning = isRunning;
-module.exports.getBuffer = getBuffer;
-module.exports._setCmd = _setCmd;
-module.exports.on = function(event, calback){
-    e.on(event,calback);
-};
+module.exports.service = new createRsync();
+module.exports.create = createRsync;
