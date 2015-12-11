@@ -1,81 +1,92 @@
 /**
  * Created by mlyasnikov on 12.11.2015.
  */
+var log = require('./../helpers/logger')("rsync-model");
 var Promise = require('promise');
 var events = require('events');
 
 var RsyncError = require("./../helpers/RsyncError");
 
 var sr = require("./../helpers/scriptRunner");
+var rsyncCmd = "rsync";
+
+var path = require('path');
+var fs = require('fs');
 
 function createRsync() {
     "use strict";
 
+    var isRun = false;
     var child = null;
     var eventEmiter = new events.EventEmitter();
 
+    var from = undefined;
+    var target = undefined;
+    var targetUser = undefined;
+    var targetHost = undefined;
+    var ignoreFileName = '.ignore';
+    var rsyncArgs = [];
 
-    this.rsyncCmd = {
-        prog: "cat",
-        args: [__dirname + '/../tests/models/copy-log.log']
-    };
+    var rsyncParser = require('./../helpers/rsyncParser');
 
-    this.start = start;
-    this.stop = stop;
-    this.getBuffer = getBuffer;
-    this.isRunning = isRunning;
-    this.on = function(event, calback){
-        eventEmiter.on(event,calback);
+    var ignoreCacheLastWrite = null;
+
+    this.on = function (event, calback) {
+        eventEmiter.on(event, calback);
     };
-    this.removeAllListeners = function(){
+    this.removeAllListeners = function () {
         eventEmiter.removeAllListeners();
     };
-    this._setCmd = function (cmd){
-        this.rsyncCmd = cmd;
-    };
-
 
     /***
-     * Start rsync with config
-     * @param config
+     * Start rsync with args
+     * @param args
      * {
      *  path: path to target dir
      *  extraArgs: dop args for rsync
      * }
      * @returns promise
      */
-    function start(config) {
+    this.start = function start(args) {
 
-        if (!config)
-            return Promise.reject(new RsyncError("Null config argument!"));
+        if (!args)
+            return Promise.reject(new RsyncError("Null args argument!"));
 
-        if (!config.path)
-            return Promise.reject(new RsyncError("Null path argument!"));
+        if (!from)
+            throw new RsyncError("From path is bad '" + this.from + "'");
 
         if (this.isRunning())
             return Promise.reject(new RsyncError("Already running!"));
 
-        var args = this.rsyncCmd.args;
+        var cmd_args = [];
 
-        if (config.extraArgs)
-            args = args.concat(config.extraArgs);
+        if (rsyncArgs && rsyncArgs.length > 0)
+            cmd_args = cmd_args.concat(rsyncArgs);
 
-        //args.push(config.path);
+        cmd_args.push(from);
+        cmd_args.push(args.path);
 
-        return sr.spawn(this.rsyncCmd.prog, args,
-            {
-                detached: false,
-                pipe: require('./../helpers/rsyncParser')()
+        if (args.extraArgs && args.extraArgs.length > 0)
+            cmd_args = cmd_args.concat(args.extraArgs);
+
+        //For parser
+        cmd_args.push("--out-format=" + rsyncParser.RSYNC_FORMAT);
+        cmd_args.push("--progress");
+
+        eventEmiter.emit('start', { title: "Process started"});
+
+        isRun = true;
+        var me = this;
+        return this._writeIgnoreCache(args)
+            .then(function () {
+                log.debug("Rsync args", cmd_args);
+                return me._getRsyncSpawn(cmd_args)
             })
             .then(function (res) {
 
-                res.isRun = true;
-                res.buffer = "";
-                res.lastProceedFile = null;
-
                 child = res;
 
-                eventEmiter.emit('start', {title: "Process started"});
+                eventEmiter.emit('progress', { state: {file: "Start coping files", percent: 0}});
 
                 res.stdout.encoding = "utf8";
                 res.stdout.on('file', function (token) {
@@ -85,44 +96,46 @@ function createRsync() {
                     eventEmiter.emit('progress', token);
                 });
 
-                res.child.stdout.encoding = 'utf8';
-                res.child.stdout.on('data', function(data){
+                res.stdout.encoding = 'utf8';
+                res.stdout.on('line', function (data) {
                     eventEmiter.emit('rawoutput', data);
+                    log.debug(data);
                 })
 
-                return res.done.then(function (exitcode) {
-                    res.isRun = false;
-                    eventEmiter.emit('stop', {exitcode: exitcode});
-                    return exitcode;
-                }, function (err) {
-                    res.isRun = false;
-                    eventEmiter.emit('stop', {exitcode: exitcode});
-                    throw(err);
-                });
-            }, function(err){
-                throw(err);
-            });
-    }
+                return {done:  res.done.finally(function () {
+                        isRun = false;
+                    })
+                    .then(function (exitcode) {
+                        eventEmiter.emit('stop', {exitcode: exitcode});
+                        return exitcode;
+                    }).catch(function (err) {
+                        eventEmiter.emit('stop', {exitcode: -1});
+                        throw(new RsyncError("rsync run error " + err.message));
+                    })};
 
-    function stop() {
+            });
+
+    };
+
+    this.stop = function stop() {
         "use strict";
 
         if (child != null && !child.isRun)
-            throw new RsyncError("Rsync not running!");
+            throw new RsyncError("rsync not running!");
 
         child.kill("SIGTERM");
     }
 
-    function getBuffer() {
+    this.getBuffer = function getBuffer() {
         "use strict";
 
         if (child != null)
             return child.buffer;
 
-        throw new RsyncError("Rsync not running!");
+        throw new RsyncError("rsync not running!");
     }
 
-    function isRunning() {
+    this.isRunning = function isRunning() {
         "use strict";
 
         if (child != null)
@@ -130,7 +143,115 @@ function createRsync() {
         else
             return false;
     }
+
+    this.setConfig = function (config) {
+
+        if (config.target)
+            target = config.target;
+
+        if (config.user)
+            targetUser = config.user;
+
+        if (config.host)
+            targetHost = config.host;
+
+        if (config.from)
+            from = config.from;
+
+        if (config.ignoreFilename)
+            ignoreFileName = config.ignoreFilename;
+
+        if (config.defaultArgs)
+            rsyncArgs = config.defaultArgs;
+
+
+    };
+
+    this._getRsyncSpawn = function _getRsyncSpawn(args) {
+        return sr.spawn(rsyncCmd, args,
+            {
+                detached: false,
+                pipe: rsyncParser()
+            })
+    }
+
+    this._writeIgnoreCache = function (config) {
+
+        if (!config.path)
+            throw new RsyncError("Can't get origin path");
+
+        if (!(target && target.path))
+            throw new RsyncError("Can't get remote path")
+
+        var now = new Date();
+
+        var ignorefile = path.join(config.path, ignoreFileName);
+
+        console.log(__dirname);
+        var notExist = !fs.existsSync(ignorefile);
+        if (!notExist && ignoreCacheLastWrite &&
+            ((now - ignoreCacheLastWrite) < ignoreCacheTimeout))
+            return;
+
+        var args = [];
+
+        args.push("-r");
+        args.push("--out-format=" + rsyncParser.RSYNC_FORMAT);
+        args.push(target.path);
+        args.push("/tmp");
+        args.push("-n");
+
+        if (targetHost && targetUser)
+            args.push("-e 'ssh -l " + targetUser + " " + targetHost);
+
+        var me = this;
+
+        var ignoreStream = null;
+
+        return getWriteFileStream(ignorefile)
+            .then(function (stream) {
+                ignoreStream = stream;
+                log.debug("Rsync (ignore files update) start args", args);
+                return me._getRsyncSpawn(args)
+            })
+            .then(function (res) {
+
+                eventEmiter.emit('progress', {state: {file: "Getting ignore file from target"} });
+                res.stdout.encoding = "utf8";
+                res.stdout.on('file', function (token) {
+                    var ignoreLine =
+                        "- " + path.basename(token.filename);
+                    ignoreStream.write(ignoreLine + '\n');
+                });
+
+                return res.done.finally(
+                    function () {
+                        ignoreStream.end();
+                    });
+
+            });
+
+    };
+
+    function getWriteFileStream(filename) {
+        return new Promise(function (resolve, reject) {
+
+            var fpath = path.resolve(filename);
+
+            var stream = fs.createWriteStream(fpath, {
+                encoding: 'utf8',
+                flags: 'w'
+
+            });
+
+            stream.on('open', function () {
+                resolve(stream);
+            });
+            stream.on('error', function (err) {
+                reject(new RsyncError(err.message))
+            });
+        });
+    }
 }
 
-module.exports.service = new createRsync();
-module.exports.create = createRsync;
+module.exports = createRsync;

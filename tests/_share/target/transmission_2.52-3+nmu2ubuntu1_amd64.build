@@ -1,0 +1,23 @@
+ dpkg-buildpackage -rfakeroot -d -us -uc
+dpkg-buildpackage: source package transmission
+dpkg-buildpackage: source version 2.52-3+nmu2ubuntu1
+dpkg-buildpackage: source distribution UNRELEASED
+dpkg-buildpackage: source changed by Maxim <vfrc2@vfrc2-notebook>
+ dpkg-source --before-build transmission-2.52.1
+dpkg-buildpackage: host architecture amd64
+dpkg-source: info: using options from transmission-2.52.1/debian/source/options: --compression=bzip2 --extend-diff-ignore=^\.pc$
+ fakeroot debian/rules clean
+dh clean --with autotools-dev
+   dh_testdir
+   debian/rules override_dh_auto_clean
+make[1]: Entering directory `/mnt/data/work/transmission-2.52.1'
+dh_auto_clean
+dh_auto_clean -Dqt
+rm -f qt/translations/*.qm
+make[1]: Leaving directory `/mnt/data/work/transmission-2.52.1'
+   dh_autotools-dev_restoreconfig
+   dh_clean
+ dpkg-source -b transmission-2.52.1
+dpkg-source: info: using options from transmission-2.52.1/debian/source/options: --compression=bzip2 --extend-diff-ignore=^\.pc$
+dpkg-source: error: can't build with source format '3.0 (quilt)': no upstream tarball found at ../transmission_2.52.orig.tar.{bz2,gz,lzma,xz}
+dpkg-buildpackage: error: dpkg-source -b transmission-2.52.1 gave error exit status 255

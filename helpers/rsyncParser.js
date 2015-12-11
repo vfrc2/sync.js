@@ -10,7 +10,11 @@
 
     Stream = require("stream");
 
-    module.exports = splitter = function () {
+    spliter.RSYNC_FORMAT="%i:%n:";
+
+    module.exports = spliter;
+
+    function spliter() {
 
         var buf, doSplit, emitToken, src, srcErrorHandler, stream;
         stream = new Stream();
@@ -35,6 +39,9 @@
                     indexes.push({index: index, len: delim[i][1]});
             }
 
+            if (indexes.length == 0)
+                return {index:-1, length:0};
+
             var min = indexes[0];
 
             for (var i = 1; i < indexes.length; i++) {
@@ -45,13 +52,15 @@
             return min;
         };
 
-        var fileExpr = (/^.f.*:(.*):/gim);
-        var progressExpr = (/^\s*(\d*\.?\d*[kmg]?)?\s*(\d{1,3}%)\s*(.*\/s)\s*(\d*:\d*:\d*)/igm);
+        var fileExpr = (/^.f.*:(.*):/im);
+        var progressExpr = (/^(.*?)((\d{1,3})%)\s*(.*\/s)\s*(\d*:\d*:\d*)/im);
 
         emitToken = function (token) {
             if (stream.encoding) {
                 token = token.toString(stream.encoding);
             }
+
+            stream.emit("line", token);
 
             if ((m = fileExpr.exec(token)) && m.length > 1) {
                 lastFilename = m[1].toString();
@@ -65,25 +74,24 @@
                 return stream.emit("progress",
                     {
                         filename: lastFilename,
-                        size: m[1],
-                        percent: m[2],
-                        speed: m[3],
-                        est: m[4]
+                        size: m[1].trim(),
+                        percent: parseInt(m[3]),
+                        speed: m[4],
+                        est: m[5]
                     })
         };
 
         doSplit = function () {
             var finalIndex, index;
-            finalIndex = -1;
-            while ((index = indexOfdel(buf, finalIndex)).index > -1) {
+            finalIndex = 0;
 
+            while ((index = indexOfdel(buf, finalIndex)).index > -1) {
                 emitToken(buf.slice(Math.max(finalIndex, 0), index.index));
                 finalIndex = index.index + index.len;
                 if (finalIndex >= buf.length) {
                     buf = buffers();
                     return;
                 }
-
             }
             if (finalIndex > -1) {
                 return buf.splice(0, finalIndex);
@@ -92,12 +100,17 @@
 
         stream.write = function (data, encoding) {
             stream.emit("data", data);
-            if ("string" === typeof data) {
-                data = new Buffer(data, encoding);
+            try {
+                if ("string" === typeof data) {
+                    data = new Buffer(data, encoding);
+                }
+                buf.push(data);
+                doSplit();
+                return true;
+            } catch (err) {
+                stream.emit("error", err);
+                return false;
             }
-            buf.push(data);
-            doSplit();
-            return true;
         };
 
         stream.end = function (data, encoding) {
@@ -124,5 +137,6 @@
         });
         return stream;
     };
+
 
 }).call(this);

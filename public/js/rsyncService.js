@@ -9,6 +9,8 @@ myApp.factory("rsync", ['$http', '$q', function($http, $q) {
 
     var me = {};
 
+    me.isRunning = false;
+
     me.status = function() {
 
         return $http.get('/api/status').then(
@@ -37,16 +39,20 @@ myApp.factory("rsync", ['$http', '$q', function($http, $q) {
             });
     };
 
-    me.runRsync = function (path, extraArgs) {
+
+    me.runRsync = function (path, args) {
 
         var data = {
             path: path,
-            extraArgs: extraArgs
-        };
+            extraArgs: args
+        }
 
-        return $http.post('/api/start', data)
+        return $http.post('/api/start', me.rsyncConfig)
             .catch(function(err){
                 throw new Error("Api call eror! " + err.data);
+            }).finally(function(){
+                me.rsyncConfig = undefined;
+                me.isRunning = false;
             });
 
     };

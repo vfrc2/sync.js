@@ -1,60 +1,51 @@
 /**
  * Created by vfrc2 on 25.11.15.
  */
+var chai = require("chai");
+var chaiAsPromised = require("chai-as-promised");
+
+chai.use(chaiAsPromised);
+chai.should();
 
 describe('Running rsync with cat of real', function () {
 
+
+    var expect = chai.expect;
+
+    var Rsync = require("./../../models/rsync");
+    var sr = require("./../../helpers/scriptRunner");
+    var rp = require("./../../helpers/rsyncParser");
+
+
     it('shouldrun', function (done) {
-        var rsyncCmd = {
-            prog: "cat",
-            args: [
-                __dirname + "/copy-log.log"
-            ]
-        };
 
-        run(rsyncCmd, done);
-
-    });
-
-    it('shouldrun with -n', function (done) {
-        var rsyncCmd = {
-            prog: "cat",
-            args: [
-                __dirname + "/copy-log-n.log"
-            ]
-        };
-
-        run(rsyncCmd, done);
-
-    });
-
-    var Rsync = require("./../../models/rsync").create;
-
-    function run(rsyncCmd, done){
         var rsync = new Rsync();
 
-        rsync._setCmd(rsyncCmd);
-
-        rsync.on('progress', function(data){
-            console.log(data);
+        rsync.setConfig({
+            from: "tests/_share/from/",
+            target: {path: "tests/_share/target"},
+            defaultArgs: ['-ar']
         });
 
-        rsync.on('file', function(data){
-            console.log(data);
+        var readedFiles = [];
+
+        rsync.on('file', function (file) {
+            readedFiles.push(file.filename)
         });
 
-        rsync.on('rawoutput', function(data){
-            console.log(data);
-        });
+        var exitcode = rsync.start({path: "tests/_share/hdd", extraArgs: ["-n"]});
 
-        var p = rsync.start({path: "blablabal"});
+        exitcode.then(function() {
+            expect(readedFiles.length > 0).to.equal(true);
 
-        p.then(function (res) {
-
-            console.log("Exitcode: " + res);
-            rsync.getBuffer();
+            expect(readedFiles[0]).to.equal('list-last-files');
+            expect(readedFiles[1]).to.equal('sixpair.c');
             done();
+        }).catch(function(err){
+            done(err);
+        });
 
-        }).done();
-    }
+    });
+
+
 });

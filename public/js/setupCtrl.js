@@ -4,25 +4,25 @@
 
 var myApp = angular.module('my-app');
 
-myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
-    function ($scope, rsync, socket, $q, $location) {
+myApp.controller('setupCtrl', ['$scope', 'results', 'rsync', 'socket', '$q', '$location', 'toastr',
+    function ($scope, results, rsync, socket, $q, $location, toastr) {
         "use strict";
 
-
-        $scope.canRun = false;
-
-        socket.on('rsync.start',function(){
+        if (results.isRunning) {
             $location.path('/status/').replace();
-        });
+            return;
+        }
 
-        rsync.status()
-            .then(function (result) {
-                if (result.state == "running") {
-                    $location.path('/status/').replace();
-                    return;
-                }
-                rsync.sysinfo().then(initNotRunningState);
-            }).catch(proccedError);
+        rsync.sysinfo().then(function (results) {
+
+            if (results.warning && results.warning.length > 0);
+            results.warning.forEach(function (warn) {
+                toastr.warning(warn);
+            });
+
+            initView(results);
+
+        }).catch(proccedError);
 
         $scope.run = function (device) {
 
@@ -37,7 +37,7 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
 
             device.ignoreList.forEach(checkItem);
 
-            function checkItem(item){
+            function checkItem(item) {
 
                 if (item.checked == true)
                     extraArgs.push("--exclude '" + item.name + "'");
@@ -46,13 +46,10 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
                     item.childs.forEach(checkItem);
             }
 
-            rsync.runRsync(device.mount, extraArgs)
-                .then(function () {
-                    $location.path('/status/').replace();
-                })
-                .catch(function (err) {
-                    window.alert(err.message);
-                });
+            results.goFromSetupToStatus({
+                path: device.mount,
+                extraArgs: extraArgs
+            });
         };
 
         $scope.selectChange = function (data) {
@@ -72,16 +69,23 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
 
         function proccedError(err) {
             $scope.canRun = false;
-            window.alert(err.message);
+            toastr.error(err.message);
         }
 
-        function initNotRunningState(data) {
+        function initView(data) {
 
-            $scope.canRun = data.length > 0;
-            $scope.devices = data;
+            $scope.devices = data.devices;
+
+            if (data.warning && data.warning.length > 0)
+                data.warning.forEach(function (war) {
+                    toastr.warning(war);
+                });
+
+
             $scope.devices.forEach(function (dev) {
                 dev.dryRun = false;
                 dev.extraArgs = "";
+                dev.canRun = true;
 
                 var ignoreFiles = [];
 
@@ -104,11 +108,11 @@ myApp.controller('setupCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
 
             $scope.selectedDevice = $scope.devices[0];
 
-            $scope.$on('$destroy', function (event) {
-                socket.removeAllListeners();
-                // or something like
-                // socket.removeListener(this);
-            });
+            //$scope.$on('$destroy', function (event) {
+            //    socket.removeAllListeners();
+            //    // or something like
+            //    // socket.removeListener(this);
+            //});
         }
 
     }]);

@@ -4,56 +4,57 @@
 
 var myApp = angular.module('my-app');
 
-myApp.controller('statusCtrl', ['$scope', 'rsync', 'socket', '$q', '$location',
-    function ($scope, rsync, socket, $q, $location) {
+myApp.controller('statusCtrl', ['$scope', 'results', 'rsync','$q', '$location', 'toastr',
+    function ($scope, results, rsync, $q, $location, toastr) {
         "use strict";
 
+        if (!results.isResults) {
+            $location.url('/');
+            $location.replace();
+            return;
+        }
+
         $scope.isRunning = false;
-        $scope.runningState = "Not running";
+        $scope.runningState =  {status:"Not running"};
         $scope.rawoutput = "";
 
-        socket.on('rsync.progress', function(data){
-
-            console.log(".");
-
-            $scope.runningState = data.state.file + " " + data.state.percent;
-
-
-        });
-        socket.on('rsync.stop', function(data){
-
-             $scope.isRunning = false;
-
+        $scope.$watch(function() {return results.isRunning}, function(newValue, oldValue){
+            $scope.isRunning = newValue;
         });
 
-        socket.on('rsync.rawoutput', function(data){
-            $scope.rawoutput += data;
+        $scope.$watch(function() {return results.progress},  function(newValue){
+            $scope.runningState = newValue;
         });
 
-        socket.on('rsync.rawstate', function(data){
-            $scope.rawoutput = data;
-        })
+        $scope.$watch(function() {return results.resultBufferStr}, function(newValue){
+            $scope.rawoutput = newValue;
+        });
 
         $scope.stop = function () {
             rsync.stopRsync().then(function () {
-                $scope.isRunning = false;
+                results.isRunning = false;
             }).catch(proccedError);
         };
 
         $scope.back = function () {
-            $location.path('/setup').replace();
+            results.goFromStatusToSetup();
         };
 
-        $scope.$on('$destroy', function (event) {
-            socket.removeAllListeners();
-            // or something like
-            // socket.removeListener(this);
-        });
-
+        if (!results.isRunning) {
+            rsync.runRsync(results.rsyncConfig.path,
+                results.rsyncConfig.extraArgs)
+                .then(function(){
+                    results.isRunning = true;
+                })
+                .catch(
+                function (err) {
+                    toastr.error(err.message);
+                });
+        }
 
         function proccedError(err) {
-            $scope.canRun = false;
-            window.alert(err.message);
+
+            toastr.error(err.message);
         }
 
     }]);

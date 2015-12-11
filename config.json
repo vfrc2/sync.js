@@ -1,0 +1,33 @@
+{
+  "webserver": {
+    "port": 3000,
+    "apiRoute": "/api"
+  },
+
+  "rsync": {
+
+    "from": "./tests/_share/from",
+
+    "target": "./tests/_share/target",
+
+    "ignoreFileName": "ignore.lst",
+
+    "defaultArgs": [
+      "-arF",
+      "--exclude='.rsync-filter'"
+    ]
+  },
+  "log": {
+    "general":{
+      "logfile": "webapp.log",
+      "loglevel": "info",
+      "tostd": "debug"
+    },
+    "requests":{
+      "logfile": "requests.log",
+      "loglevel": "info",
+      "tostd": "debug"
+    }
+
+  }
+}

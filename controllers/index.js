@@ -4,14 +4,16 @@
  * Index for web server
  *
  */
+var log = require('./../helpers/logger')("webapp-controllers");
 
-
-function createRouter(io) {
+function createRouter(app) {
     var express = require('express');
     var router = express.Router();
 
-    router.use('/api', require('./rsync'));
-    require('./socket')(io);
+    log.log("verbose","Using rsync on api path %s", app.appconfig.webserver.apiRoute );
+    router.use(app.appconfig.webserver.apiRoute, require('./rsync'));
+    log.log('verbose','Using socket.io');
+    require('./socket')(app.appio);
 
     return router;
 }

@@ -26,6 +26,10 @@ function spawn(prog, args, options) {
             stderrBuffer += data;
         });
 
+        child.stdout.on('data', function (data) {
+            stderrBuffer += data;
+        });
+
         var stdout =  child.stdout;
         if (options.pipe)
             stdout = stdout.pipe(options.pipe);

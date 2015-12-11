@@ -4,12 +4,14 @@
 
 var Promise = require('promise');
 var RsyncError = require('./../helpers/RsyncError');
-var Rsync = require('./../models/rsync').create;
+var Rsync = require('./rsync');
 var sr = require('./../helpers/scriptRunner');
+var log = require('./../helpers/logger')("blockdev-info");
 
 
 function getDevInfo() {
 
+    log.verbose("Start 'mount | grep /media'");
     var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
         [],
         {
@@ -22,9 +24,14 @@ function getDevInfo() {
 
         process.stdout.encoding = 'utf8';
 
+        var overalWarning = [];
+
         process.stdout.on("token", function (token) {
 
+
             try {
+
+                log.debug("Get dev string '%s'", token);
                 var tkn = token.split(" ", 2);
 
                 var dev = {
@@ -32,23 +39,63 @@ function getDevInfo() {
                     mount: tkn[1]
                 };
 
+                log.debug("Parse dev: %s", dev);
+
+                var deviceWarning = [];
 
                 promises.push(
                     Promise.all(
-                        [getDfinfo(dev), getUdev(dev), getRsyncDryrunFile(dev)])
-                        .then(
-                            function (result) {
-                                _fillDev(dev, result);
-                                return dev;
-                            })
+                        [
+                            getDfinfo(dev),
+                            getUdev(dev),
+                            getRsyncDryrunFile(dev)
+                                .catch(function (err) {
+                                    deviceWarning.push("Error geting ignore file list " +
+                                        err.message);
+                                    return [];
+                                })
+                        ])
+                        .then(function (result) {
+                            _fillDev(dev, result);
+
+                            if (deviceWarning.length)
+                                dev.warning = deviceWarning;
+
+                            return dev;
+                        })
+                        .catch(function (err) {
+                            log.error("Dev '%s'  get info error", dev.dev, err.message);
+                            log.debug("Dev: ", dev.dev, err.stack);
+
+                            overalWarning.push("Error while parse dev " + dev.dev +
+                                " " + err.message);
+
+                            return undefined;
+                        })
                 );
             } catch (err) {
-
+                log.error("Devinfo error", err.message);
+                log.debug("Devinfo stack", err.stack);
+                overalWarning.push("Error while parse devices! " +
+                    " " + err.message);
             }
         });
 
         return process.done.then(function () {
-            return Promise.all(promises);
+            return Promise.all(promises).then(function (devices) {
+
+                if (!(devices && devices.length > 0)) {
+                    overalWarning.push("No devices!");
+                }
+
+                var response = {
+                    warning: overalWarning,
+                    devices: devices
+                };
+
+                return response;
+
+            });
         });
 
     });
@@ -57,11 +104,20 @@ function getDevInfo() {
 
 function getDfinfo(dev) {
 
-    var df = sr.spawn("df", [dev.dev,
+    var args = [
+        dev.dev,
         "--output=used,avail,size",
-        "--block-size=1"], {
+        "--block-size=1"
+    ];
+
+    log.verbose("Start 'df'");
+    log.debug("Df args: %s", args);
+
+    var df = sr.spawn("df", args, {
         pipe: require("stream-splitter")('\n')
     });
+
+    //throw new Error("test error");
 
     return df.then(function (process) {
 
@@ -86,7 +142,12 @@ function getDfinfo(dev) {
 
 function getUdev(dev) {
 
-    var uadm = sr.spawn("udevadm", ["info", "-a", dev.dev],
+    var args = ["info", "-a", dev.dev];
+
+    log.verbose("Start 'udevadm'");
+    log.debug("Udevadm args: %s", args);
+
+    var uadm = sr.spawn("udevadm", args,
         {
             pipe: require("stream-splitter")('\n')
         });
@@ -114,67 +175,48 @@ function getUdev(dev) {
 
             if (errs.length > 0)
                 throw(new Error("Error parse udev output " + errs));
-
+            log.debug("get udev atrs: %s", data);
             return data;
         })
 
     });
 }
 
-var Path = require('path');
-
 function getRsyncDryrunFile(dev) {
-    var rsync = new Rsync();
+    try {
+        var rsync = new Rsync();
 
-    var ignoreList = [];
+        var ignoreList = [];
 
-    rsync.on('file', function (data) {
+        rsync.on('file', function (data) {
 
-        ignoreList.push(data);
-        //pushToTree(data.filename, data);
-    });
-
-    //function pushToTree(filename, value) {
-    //
-    //    var path = filename.split(Path.sep);
-    //
-    //    var curNode = ignoreList;
-    //
-    //    for (var i = 0; i < path.length; i++) {
-    //
-    //        if (i == path.length - 1) {
-    //            curNode.childs.push({name: path[i], data: value});
-    //            break;
-    //        }
-    //
-    //        var find = null;
-    //        for (var j = 0; j < curNode.childs.length; j++) {
-    //            if (path[i] === curNode.childs[j].name) {
-    //                find = curNode.childs[j];
-    //                break;
-    //            }
-    //        }
-    //
-    //        if (!find) {
-    //            find = {name: path[i], childs: []};
-    //            curNode.childs.push(find);
-    //        }
-    //
-    //        curNode = find;
-    //
-    //
-    //    }
-    //
-    //
-    //}
-
-    return rsync.start({
-            path: dev.mount,
-            //extraArgs: ["-n"]
-        })
-        .then(function (res) {
-            return {name: 'ignoreList', value: ignoreList};
+            ignoreList.push(data);
+            //pushToTree(data.filename, data);
         });
+
+        var args = {
+            path: dev.mount,
+            extraArgs: ["-n"]
+        };
+
+        rsync.setConfig(getDevInfo._rsyncConfig);
+
+        log.verbose("Start 'rsync dryrun'");
+        log.debug("rsync args: %s", args);
+
+        return rsync.start(args)
+            .then(function (res) {
+                return res.done;
+            })
+            .then(function (res) {
+                log.debug("rsync ignore files count: %s", ignoreList.length);
+                return {name: 'ignoreList', value: ignoreList};
+            });
+    } catch (err) {
+        log.error("Rsync dry run error: %s", err.message);
+        log.debug("Rsync dry run stack", err.stack);
+        return Promise.reject(err);
+    }
 }
 
 function _parseDfBuffer(buffer) {
@@ -228,6 +270,12 @@ function _fillDev(dev, atrs) {
         }
     });
 
+}
+
+getDevInfo._rsyncConfig = {}
+
+getDevInfo.setRsyncConfig = function (config) {
+    getDevInfo._rsyncConfig = config;
 }
 
 module.exports.getDevInfo = getDevInfo;

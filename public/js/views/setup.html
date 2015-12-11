@@ -1,14 +1,16 @@
 
-    <div class="form-group">
-        <label>Device:</label>
-        <select class="form-control" ng-model="selectedDevice"
+    <div class="form-group" ng-class=" {'has-warning': selectedDevice.warning && selectedDevice.warning.length > 0}">
+        <label class="control-label">Device:</label>
+        <select class="form-control selectpicker" ng-model="selectedDevice"
                 ng-options="item as item.model for item in devices track by item.mount">
         </select>
-        <label>Space: {{ selectedDevice.used | bytes }} / {{ selectedDevice.size | bytes }}
-            (Free: {{ selectedDevice.available | bytes }})</label>
+        <span  class="help-block">Space: {{ selectedDevice.used | bytes }} / {{ selectedDevice.size | bytes }}
+            (Free: {{ selectedDevice.available | bytes }})</span>
+        <span ng-repeat-start="warn in selectedDevice.warning"
+              class="help-block " ng-repeat-end="">{{warn}}</span>
     </div>
     <div class="form-group">
-        <label>Path:</label>
+        <label class="control-label">Path:</label>
         <input class="form-control" ng-model="selectedDevice.mount">
     </div>
     <div class="form-group">
@@ -17,7 +19,7 @@
         </div>
     </div>
     <div class="form-group">
-        <button class="btn btn-success" ng-disabled="!canRun" ng-click="run(selectedDevice)">Run!</button>
+        <button class="btn btn-success" ng-disabled="!selectedDevice.canRun" ng-click="run(selectedDevice)">Run!</button>
     </div>
 
     <div class="form-group">

@@ -2,7 +2,7 @@
  * Created by mlyasnikov on 03.11.2015.
  */
 
-var mainApp = angular.module("my-app", ['ngRoute']);
+var mainApp = angular.module("my-app", ['ngRoute','toastr']);
 
 mainApp.filter('bytes', function() {
     return function(bytes, precision) {
