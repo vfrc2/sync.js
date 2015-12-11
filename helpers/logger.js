@@ -2,55 +2,51 @@
  * Created by vfrc2 on 08.12.15.
  */
 
-var winston = require('winston');
+var log4js = require('log4js');
+var path = require('path');
 
-//requests.log - log all web requsts
-var reqFileTransport = new (winston.transports.File)({
-    filename: 'requests.log',
-    json: false,
-    level: 'info'
-});
+var basepath = path.dirname(__dirname);
 
-//execution.log - log all except requests
-var logFileTransport = new (winston.transports.File)({
-    filename: 'log.log',
-    json: false,
-    level: 'info'
-});
+log4js.setGlobalLogLevel("info");
 
-var consoleTransport = new (winston.transports.Console)({
-    level: 'info'
-});
+function createLogger(tag) {
 
-var container = new winston.Container();
+    var name = path.relative(basepath,
+        path.basename(module.parent.filename, ".js"));
+    if (tag)
+        name += "/" + tag;
 
-function createLogger(module) {
-    var logger = container.add(module, {
-        transports: [consoleTransport, logFileTransport],
-    });
+    var logger = log4js.getLogger(name);
 
-    logger.filters.push(function(lvl, msg, meta){
-        return "["+module+"] " + msg;
-    });
-
-    return logger;
-
-}
-
-function createRequestLoger(module) {
-    var logger = container.add(module, {
-        transports: [reqFileTransport, consoleTransport]
-    });
-
-    logger.filters.push(function(lvl, msg, meta){
-        return "["+module+"] " + msg;
-    });
+    var baseDebug = logger.debug;
+    logger.debug = function (message) {
+        if (logger.isLevelEnabled("debug"))
+            baseDebug.apply(logger, arguments);
+    };
 
     return logger;
 }
 
-createLogger.request = createRequestLoger;
-createLogger.setConsoleVerbose = function(level){
-    consoleTransport.level = level;
+createLogger.setConfing = function (config) {
+
+    log4js.configure(config);
+
+    if (config.appenders &&
+        config.appenders.filter(
+            function (app) {
+                if (app.type && app.type === "console")
+                    return app;
+            }).length < 1)
+            log4js.addAppender(log4js.appenders.console());
+
+
+
 };
+
+
+createLogger.setGlobalLevel = function (level) {
+    log4js.setGlobalLogLevel(level);
+}
+
+
 module.exports = createLogger;

@@ -9,8 +9,8 @@
  * /websockerStatus - connect to web socket to recieve current status
  */
 
-var log = require('./../helpers/logger')("rsync-controller");
-var reqLog = require('./../helpers/logger').request("rsync-controller-req");
+var log = require('./../helpers/logger')();
+var reqLog = require('./../helpers/logger')("request");
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -128,17 +128,16 @@ function rsyncErrorHandler(err, req, res, next) {
 
 function logApiRequest(req, res, next){
     reqLog.info("Request to %s", req.originalUrl);
-    reqLog.verbose("From %s", req.hostname);
-    reqLog.debug("Request data ", {req:{
+    reqLog.debug("From %s", req.hostname, {
         originalUrl: req.originalUrl,
         headers: req.headers,
         data: req.body
-    }});
+    });
     next();
-    reqLog.debug("Response data ", {response: {
+    reqLog.debug("Response data ",  {
         headers: res.statusCode,
         data: res.body
-    }});
+    });
 }
 
 log.log('verbose', 'Rsync controller loaded');

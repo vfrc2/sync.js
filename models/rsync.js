@@ -1,7 +1,7 @@
 /**
  * Created by mlyasnikov on 12.11.2015.
  */
-var log = require('./../helpers/logger')("rsync-model");
+var log = require('./../helpers/logger')();
 var Promise = require('promise');
 var events = require('events');
 

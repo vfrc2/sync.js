@@ -1,4 +1,5 @@
-var log = require('./helpers/logger')("webapp");
+var logger = require('./helpers/logger');
+var log = require('./helpers/logger')();
 
 var express = require('express');
 var app = express();
@@ -6,7 +7,9 @@ var app = express();
 try {
     var config = getConfig();
 
-    log.log('verbose',"Starting server...");
+    logger.setConfing(config.log);
+
+    log.log('verbose', "Starting server...");
     var server = app.listen(config.webserver.port, function (err) {
         "use strict";
 
@@ -111,9 +114,9 @@ function getConfig() {
                 nargs: 1,
                 describe: 'remote host address'
             })
-            .option('v',{
+            .option('v', {
                 alias: "verbose",
-                description: 'set console to verbose log level'
+                description: 'set global log level to debug'
             })
 
             .help('h')
@@ -142,7 +145,7 @@ function getConfig() {
     };
 
     if (args.verbose)
-        require("./helpers/logger").setConsoleLevel('verbose');
+        logger.setGlobalLevel('debug');
 
     //rewrite from config file config.json
     {
@@ -187,8 +190,18 @@ function getConfig() {
                 if (jsonconfig.rsync.defaultArgs)
                     config.rsync.defaultArgs =
                         config.rsync.defaultArgs.concat(jsonconfig.rsync.defaultArgs);
-            }
 
+
+            }
+            if (jsonconfig.log) {
+
+                if (typeof(jsonconfig.log) === 'string' &&
+                    !fs.existsSync(jsonconfig.log))
+                    config.log = undefined;
+                else {
+                    config.log = jsonconfig.log;
+                }
+            }
 
 
         } else {

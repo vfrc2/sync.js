@@ -18,16 +18,8 @@
     ]
   },
   "log": {
-    "general":{
-      "logfile": "webapp.log",
-      "loglevel": "info",
-      "tostd": "debug"
-    },
-    "requests":{
-      "logfile": "requests.log",
-      "loglevel": "info",
-      "tostd": "debug"
-    }
-
+    "appenders":[
+      { "type": "file", "filename":"log.log" }
+    ]
   }
 }

@@ -6,12 +6,12 @@ var Promise = require('promise');
 var RsyncError = require('./../helpers/RsyncError');
 var Rsync = require('./rsync');
 var sr = require('./../helpers/scriptRunner');
-var log = require('./../helpers/logger')("blockdev-info");
+var log = require('./../helpers/logger')();
 
 
 function getDevInfo() {
 
-    log.verbose("Start 'mount | grep /media'");
+    log.debug("Start 'mount | grep /media'");
     var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
         [],
         {
@@ -110,7 +110,7 @@ function getDfinfo(dev) {
         "--block-size=1"
     ];
 
-    log.verbose("Start 'df'");
+    log.debug("Start 'df'");
     log.debug("Df args: %s", args);
 
     var df = sr.spawn("df", args, {
@@ -144,7 +144,7 @@ function getUdev(dev) {
 
     var args = ["info", "-a", dev.dev];
 
-    log.verbose("Start 'udevadm'");
+    log.debug("Start 'udevadm'");
     log.debug("Udevadm args: %s", args);
 
     var uadm = sr.spawn("udevadm", args,
@@ -201,7 +201,7 @@ function getRsyncDryrunFile(dev) {
 
         rsync.setConfig(getDevInfo._rsyncConfig);
 
-        log.verbose("Start 'rsync dryrun'");
+        log.debug("Start 'rsync dryrun'");
         log.debug("rsync args: %s", args);
 
         return rsync.start(args)

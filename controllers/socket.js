@@ -4,14 +4,14 @@
 
 function createApiSocket(io) {
 
-    var reqLogger = require('./../helpers/logger').request("socket-req");
-    var logger = require('./../helpers/logger')("socket");
+    var reqLogger = require('./../helpers/logger')("request");
+    var logger = require('./../helpers/logger')();
 
     var rsync = require('./../models/rsyncService');
 
     io.on('connection', function (socket) {
 
-        reqLogger.debug('client connected', {socket: socket});
+        reqLogger.debug('client connected', socket.id);
 
         if (rsync.isRunning()) {
             io.emit('rsync.rawstate', rsync.getBuffer());
@@ -19,7 +19,7 @@ function createApiSocket(io) {
 
         socket.on('disconnect', function () {
 
-            reqLogger.debug("client disconected", {socket: socket});
+            reqLogger.debug("client disconected", socket.id);
         });
 
     });
@@ -40,21 +40,21 @@ function createApiSocket(io) {
         io.emit('rsync.rawoutput', data);
     })
 
-    logger.verbose("Socket.io initialized");
+    logger.debug("Socket.io initialized");
 
     /**
      * Config loger
      *
      */
     {
-    reqLogger.rewriters.push(function (lvl, msg, meta) {
-        if (meta.socket) {
-            meta.socket = {
-                clientId: meta.socket.id
-            }
-        }
-        return meta;
-    });
+    //reqLogger.rewriters.push(function (lvl, msg, meta) {
+    //    if (meta.socket) {
+    //        meta.socket = {
+    //            clientId: meta.socket.id
+    //        }
+    //    }
+    //    return meta;
+    //});
     }
 
 }
