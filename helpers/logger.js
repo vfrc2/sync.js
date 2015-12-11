@@ -26,6 +26,7 @@ function createLogger(tag) {
     };
 
     return logger;
+
 }
 
 createLogger.setConfing = function (config) {
