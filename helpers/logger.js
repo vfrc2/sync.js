@@ -12,9 +12,10 @@ log4js.setGlobalLogLevel("info");
 function createLogger(tag) {
 
     var name = path.relative(basepath,
-        path.basename(module.parent.filename, ".js"));
+        path.basename(module.parent.filename, ".js"))
+        .split('/').join('.');
     if (tag)
-        name += "/" + tag;
+        name += "." + tag;
 
     var logger = log4js.getLogger(name);
 

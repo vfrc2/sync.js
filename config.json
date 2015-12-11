@@ -19,7 +19,9 @@
   },
   "log": {
     "appenders":[
-      { "type": "file", "filename":"log.log" }
+      { "type": "file", "filename":"log.log" },
+      { "type": "file", "filename":"requests.log", "category": [
+        "webapp.request", "socket.request", "rsync.request"] }
     ]
   }
 }
