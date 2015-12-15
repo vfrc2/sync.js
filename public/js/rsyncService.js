@@ -20,10 +20,7 @@ myApp.factory("rsync", ['$http', '$q', '$rootScope', 'socket', function ($http, 
                     throw new Error("Api call error! Null object!");
                 return response.data;
             }
-        ).catch(function (err) {
-            throw new Error("Api call error! " + err.data);
-        });
-
+        ).catch(httpErrorHandler);
     };
 
     me.runRsync = function (path, args) {
@@ -34,30 +31,48 @@ myApp.factory("rsync", ['$http', '$q', '$rootScope', 'socket', function ($http, 
         }
 
         return $http.post('/api/start', data)
-            .catch(function (err) {
-                throw new Error("Api call eror! " + err.data);
-            }).finally(function () {
+            .finally(function () {
                 me.rsyncConfig = undefined;
                 me.isRunning = false;
-            });
+            }).catch(httpErrorHandler);
 
     };
+
+    function httpErrorHandler(err) {
+        if (err.data && err.data.error)
+            return $q.reject(new Error(err.data.error));
+        else
+            return $q.reject(new Error("Unknow server error!"));
+    }
 
     me.stopRsync = function () {
         return $http.post('/api/stop', null)
-            .catch(function (err) {
-                throw new Error("Api call eror! " + err.data);
-            });
+            .catch(httpErrorHandler);
     };
 
+    //Event copy progress
+    //
+    //Fire when rsync emit progress of copied file
+    //
+    //WEBSOCKET rsync.progress
+    //Success Response
+    //
+    //websocket data: {json}
+    //
+    //{
+    //    filename: "filename.ext",
+    //        size: 1000
+    //    percent: 23,
+    //        speed: 1200,
+    //    est: "3:45 min"
+    //}
     socket.on('rsync.progress', function (data) {
         console.log(".");
         _emit("progress", data);
     });
 
-    socket.on('rsync.stop', function (data) {
-        me.isRunning = false;
-        _emit("stop");
+    socket.on('rsync.state', function (data) {
+        _emit("state", data);
     });
 
     socket.on('rsync.rawoutput', function (data) {

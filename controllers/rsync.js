@@ -189,6 +189,11 @@ function _getErrAnswer(req, res, next) {
 
 router.use(rsyncErrorHandler);
 
+//json} Error-Response:
+//*     HTTP/1.1 500 Internal Server Error
+//*     {
+//*       "error": "message"
+//*     }
 function rsyncErrorHandler(err, req, res, next) {
     if (err instanceof RsyncError) {
 
@@ -197,8 +202,8 @@ function rsyncErrorHandler(err, req, res, next) {
         log.error("Rsync error", err.message);
         log.debug("Error stack", err.stack);
         res.statusCode = 500;
-        res.end({error: err.message});
-        return;
+        res.end(JSON.stringify({error: err.message}));
+        return
     }
     next(err);
 }

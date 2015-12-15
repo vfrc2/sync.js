@@ -30,10 +30,26 @@ myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
 
         });
 
+        //Event copy progress
+        //
+        //Fire when rsync emit progress of copied file
+        //
+        //WEBSOCKET rsync.progress
+        //Success Response
+        //
+        //websocket data: {json}
+        //
+        //{
+        //    filename: "filename.ext",
+        //        size: 1000
+        //    percent: 23,
+        //        speed: 1200,
+        //    est: "3:45 min"
+        //}
         rsync.on('progress', function(data){
            $scope.runningState = {
-               status: data.state.file,
-               percent: data.state.percent >= 0 && data.percent <= 100?  data.percent: 100
+               status: data.filename,
+               percent: data.percent >= 0 && data.percent <= 100?  data.percent: 100
            }
         });
 
@@ -41,8 +57,8 @@ myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
            $scope.rawoutput += data +'\n';
         });
 
-        rsync.on('stop', function(){
-            $scope.runningState = {status:"Rsync finished"}
+        rsync.on('state', function(data){
+            $scope.runningState = {status: data.title }
         });
 
         $scope.stop = function () {

@@ -82,7 +82,7 @@ function createRsync() {
         isFinished = false;
         outputBuffer = [];
 
-        eventEmiter.emit('start', { title: "Process started"});
+        eventEmiter.emit('state', { title: "Start rsync", type: "start"});
 
         var me = this;
         return this._writeIgnoreCache(args)
@@ -103,7 +103,8 @@ function createRsync() {
 
                 child = res;
 
-                eventEmiter.emit('progress', { state: {file: "Start coping files", percent: 0}});
+                //))))
+                eventEmiter.emit('state', { title: "Start coping files" });
 
                 res.stdout.encoding = "utf8";
                 res.stdout.on('file', function (token) {
@@ -125,12 +126,12 @@ function createRsync() {
                         isFinished = true;
                     })
                     .then(function (exitcode) {
-                        eventEmiter.emit('stop', {exitcode: exitcode});
+                        eventEmiter.emit('state', {title: "Rsync finished"});
                         return exitcode;
                     }).catch(function (err) {
                         outputBuffer.push(err.message);
                         eventEmiter.emit('rawoutput', err.message);
-                        eventEmiter.emit('stop', {exitcode: -1});
+                        eventEmiter.emit('state', {title: "Rsync exited with error " + err.message});
                         throw(new RsyncError("rsync run error " + err.message));
                     })};
 
@@ -141,11 +142,14 @@ function createRsync() {
     this.stop = function stop() {
         "use strict";
 
-        if (child != null && !child.isRun)
+        if (!child || !isRun)
             throw new RsyncError("rsync not running!");
 
-        child.kill("SIGTERM");
-    }
+        child.child.kill("SIGTERM");
+        log.debug("Send SIGTERM to " + child.child.pid);
+
+        return Promise.resolve();
+    };
 
     this.getBuffer = function getBuffer() {
         "use strict";
@@ -156,12 +160,12 @@ function createRsync() {
         throw new RsyncError("rsync not running!");
     }
 
-    this.isRunning = function isRunning() {
+    this.isRunning = function () {
         "use strict";
         return isRun;
     };
 
-    this.isFinished = function isRunning() {
+    this.isFinished = function () {
         "use strict";
         return isFinished;
     };
@@ -238,7 +242,7 @@ function createRsync() {
             })
             .then(function (res) {
 
-                eventEmiter.emit('progress', {state: {file: "Getting ignore file from target"} });
+                eventEmiter.emit('state', {title: "Getting ignore file from target"});
                 res.stdout.encoding = "utf8";
                 res.stdout.on('file', function (token) {
                     var ignoreLine =

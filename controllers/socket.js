@@ -25,24 +25,21 @@ function createApiSocket(io) {
     });
 
     /**
-     * @api {websocket} rsync.start Event start
+     * @api {websocket} rsync.state Event on change rsync process state
      * @apiGroup Websocket Rsync
      * @apiDescription
-     * Fire when rsync starts
+     * Fire when rsync starts or stops and when change state
+     * @apiSuccess {string}     title   Message describe state
+     * @apiSuccess [{string}]   type    Enum of type of state can be start, stop or undeifined
+     * @apiSuccessExample {json}
+     * {
+     *      title: "Rsync start"
+     *      type: "start"
+     * }
      */
-    rsync.on('start', function (data) {
-        io.emit('rsync.start', data);
+    rsync.on('state', function (data) {
+        io.emit('rsync.state', data);
     });
-
-    /**
-     * @api {websocket} rsync.stop Event stop
-     * @apiGroup Websocket Rsync
-     * @apiDescription
-     * Fire when rsync finished or killed
-     */
-    rsync.on('stop', function (data) {
-        io.emit('rsync.stop', data);
-    })
 
     /**
      * @api {websocket} rsync.progress Event copy progress
