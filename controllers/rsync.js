@@ -1,8 +1,11 @@
 /**
- * @module rsync
- * @description Api for starting, stoping and watch Rsync progress
- * Api accept json objects and answers with json
- * @author Maxim Lyasnikov (vfrc29@gmail.com)
+ * @apiDefine rsyncError
+ * @apiError Rsync Error 500
+ * @apiErrorExample {json} Error-Response:
+ *     HTTP/1.1 500 Internal Server Error
+ *     {
+ *       "error": "message"
+ *     }
  */
 
 var log = require('./../helpers/logger')(module);
@@ -25,7 +28,8 @@ router.use(logApiRequest);
  * @api {get} /status Get rsync status
  * @apiName GetStatus
  * @apiGroup Rsync
- * @apiDescription Get status of running rsync instance
+ * @apiDescription
+ * Get status of running rsync instance
  * @apiSuccess (200){Boolean}  isRunnig  Is Rsync instance running
  * @apiSuccess (200){Boolean}  isFinished  Is Rsync already finished
  * @apiSuccess (200){String[]} outputBuffer Output of rsync stdout and stderr
@@ -40,6 +44,7 @@ router.use(logApiRequest);
  *          ...
  *         ]
  *     }
+ * @apiUse rsyncError
  */
 router.get('/status', function (req, res, next) {
 
@@ -60,19 +65,19 @@ router.get('/status', function (req, res, next) {
 });
 
 /**
- * @function start
- * @description
- * Start rsync run
- * @param {object} body need to be json object
- *      {
- *          {string} path - full path where to copy file (ext hdd path)
- *          {array} extraArgs - extra args for rsync
+ * @api {post} /start Start rsync
+ * @apiName PostStart
+ * @apiGroup Rsync
+ * @apiDescription
+ * Start rsync process
+ * @apiParam {string} path Path to external hdd
+ * @apiParam {string[]} extraArgs Extra args for rsync
+ * @apiParamExample {json} Request-Example:
+ *       {
+ *          "path": "full path where to copy file (ext hdd path)",
+ *          "extraArgs": "extra args for rsync"
  *      }
- * @return HTTP OK or 500 if error
- * if error is RsyncError when it will return {object}
- *      {
- *          {string} error: error message
- *      }
+ * @apiUse rsyncError
  */
 router.post('/start', function (req, res, next) {
 
@@ -93,10 +98,36 @@ router.post('/start', function (req, res, next) {
 });
 
 /**
- * @function sysinfo
- * @description
+ * **
+ * @api {get} /sysinfo Get ext hdd info
+ * @apiName GetSysinfo
+ * @apiGroup Rsync
+ * @apiDescription
  * Get drives mounted to /media and stat info about each
- * @return {object[]}
+ * @apiSuccess (root)       {Object[]}  devices     List of connected devices may be []
+ * @apiSuccess (devices)    {Object}    device      Device info object
+ * @apiSuccess (device)     {String}    dev         Dev system path /dev/sd*
+ * @apiSuccess (device)     {String}    mount       Device mount point
+ * @apiSuccess (device)     {Int}       used        Space used on device (byte)
+ * @apiSuccess (device)     {Int}       available   Space left on device
+ * @apiSuccess (device)     {Int}       size        Size (byte)
+ * @apiSuccess (device)     {String}    model       Model name
+ * @apiSuccess (device)     {String[]}  ignoreList  List of file what will be copied (from rsync dryrun)
+ * @apiSuccess (device)     {String[]}  warnings    List of non-critical errors while getting device info
+ * @apiSuccess (root)       {String[]}  warnings    List of non-critical errors while getting devices info
+ * @apiSuccessExample {json} HTTP-1/1 200:
+ * [
+ *  {
+ *      "dev":"/dev/sdc1",
+ *      "mount":"/media/vfrc2/Transcend",
+ *      "used":19655368704,
+ *      "available":12456087552,
+ *      "size":32111456256,
+ *      "model":"Transcend 32GB",
+ *      "ignoreList":[]
+ *  }
+ * ]
+ *@apiUse rsyncError
  */
 router.get('/sysinfo', function (req, res, next) {
 
@@ -125,9 +156,12 @@ router.get('/sysinfo', function (req, res, next) {
 });
 
 /**
- * @fucntion stop
- * @description Request to stop rsync
- * @return HTTP OK or error
+ * @api {post} /stop Stop running rsync
+ * @apiName PostStop
+ * @apiGroup Rsync
+ * @apiDescription
+ * Request to stop running rsync
+ * @apiUse rsyncError
  */
 router.post('/stop', function (req, res, next) {
 
@@ -138,6 +172,8 @@ router.post('/stop', function (req, res, next) {
     );
 
 });
+
+
 
 function _getSentOk(req, res) {
     return function () {
@@ -152,10 +188,7 @@ function _getErrAnswer(req, res, next) {
 }
 
 router.use(rsyncErrorHandler);
-/**
- * @description Standart error report
- * @returns {object}
- */
+
 function rsyncErrorHandler(err, req, res, next) {
     if (err instanceof RsyncError) {
 
