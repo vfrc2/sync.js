@@ -128,6 +128,8 @@ function createRsync() {
                         eventEmiter.emit('stop', {exitcode: exitcode});
                         return exitcode;
                     }).catch(function (err) {
+                        outputBuffer.push(err.message);
+                        eventEmiter.emit('rawoutput', err.message);
                         eventEmiter.emit('stop', {exitcode: -1});
                         throw(new RsyncError("rsync run error " + err.message));
                     })};

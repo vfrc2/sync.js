@@ -1,12 +1,8 @@
 /**
- * Module of web api for rsync
- *
- * Api:
- * /status - return current status of rsync daemon (running or not)
- * /sysinfo - return info about usb devices connected to server
- * /start - exec rsync daemon need path and args
- * /stop - stop rsync daemon
- * /websockerStatus - connect to web socket to recieve current status
+ * @module rsync
+ * @description Api for starting, stoping and watch Rsync progress
+ * Api accept json objects and answers with json
+ * @author Maxim Lyasnikov (vfrc29@gmail.com)
  */
 
 var log = require('./../helpers/logger')(module);
@@ -25,6 +21,26 @@ router.use(bodyParser.json());
 
 router.use(logApiRequest);
 
+/**
+ * @api {get} /status Get rsync status
+ * @apiName GetStatus
+ * @apiGroup Rsync
+ * @apiDescription Get status of running rsync instance
+ * @apiSuccess (200){Boolean}  isRunnig  Is Rsync instance running
+ * @apiSuccess (200){Boolean}  isFinished  Is Rsync already finished
+ * @apiSuccess (200){String[]} outputBuffer Output of rsync stdout and stderr
+ * @apiSuccessExample {json} Success-Response:
+ *     HTTP/1.1 200 OK
+ *     {
+ *       "isRunnig": true,
+ *       "isFinished": false,
+ *       "outputBuffer": [
+ *          ...
+ *          "file.xsl",
+ *          ...
+ *         ]
+ *     }
+ */
 router.get('/status', function (req, res, next) {
 
     try {
@@ -43,6 +59,21 @@ router.get('/status', function (req, res, next) {
     }
 });
 
+/**
+ * @function start
+ * @description
+ * Start rsync run
+ * @param {object} body need to be json object
+ *      {
+ *          {string} path - full path where to copy file (ext hdd path)
+ *          {array} extraArgs - extra args for rsync
+ *      }
+ * @return HTTP OK or 500 if error
+ * if error is RsyncError when it will return {object}
+ *      {
+ *          {string} error: error message
+ *      }
+ */
 router.post('/start', function (req, res, next) {
 
     try {
@@ -61,6 +92,12 @@ router.post('/start', function (req, res, next) {
         _getErrAnswer(req, res, next));
 });
 
+/**
+ * @function sysinfo
+ * @description
+ * Get drives mounted to /media and stat info about each
+ * @return {object[]}
+ */
 router.get('/sysinfo', function (req, res, next) {
 
     reqLog.debug("Start block dev info");
@@ -87,6 +124,11 @@ router.get('/sysinfo', function (req, res, next) {
         _getErrAnswer(req, res, next));
 });
 
+/**
+ * @fucntion stop
+ * @description Request to stop rsync
+ * @return HTTP OK or error
+ */
 router.post('/stop', function (req, res, next) {
 
     reqLog.debug("Pending to stop rsync");
@@ -110,7 +152,10 @@ function _getErrAnswer(req, res, next) {
 }
 
 router.use(rsyncErrorHandler);
-
+/**
+ * @description Standart error report
+ * @returns {object}
+ */
 function rsyncErrorHandler(err, req, res, next) {
     if (err instanceof RsyncError) {
 
@@ -119,7 +164,7 @@ function rsyncErrorHandler(err, req, res, next) {
         log.error("Rsync error", err.message);
         log.debug("Error stack", err.stack);
         res.statusCode = 500;
-        res.end(err.message);
+        res.end({error: err.message});
         return;
     }
     next(err);

@@ -46,9 +46,7 @@ myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
         });
 
         $scope.stop = function () {
-            rsync.stopRsync().then(function () {
-                $scope.back();
-            }).catch(proccedError);
+            rsync.stopRsync().catch(proccedError);
         };
 
         $scope.back = function () {

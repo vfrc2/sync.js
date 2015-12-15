@@ -43,8 +43,7 @@ function spawn(prog, args, options) {
                         reject(child.err);
 
                     if (exitcode != 0) {
-                        reject(new Error("Error (" + exitcode + ") "
-                            + prog  + " \n" + stderrBuffer));
+                        reject(new Error(stderrBuffer));
                         return;
                     }
 
