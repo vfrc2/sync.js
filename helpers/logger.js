@@ -9,10 +9,12 @@ var basepath = path.dirname(__dirname);
 
 log4js.setGlobalLogLevel("info");
 
-function createLogger(tag) {
+function createLogger(child_module, tag) {
+
+    var filename = child_module?child_module.filename: module.parent.filename;
 
     var name = path.relative(basepath,
-        path.basename(module.parent.filename, ".js"))
+        path.basename(filename, ".js"))
         .split('/').join('.');
     if (tag)
         name += "." + tag;

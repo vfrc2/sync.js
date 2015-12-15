@@ -4,16 +4,5 @@
     word-wrap: normal;
     overflow-wrap: normal;
     white-space: pre;
-}
-.fill-height {
-    height: 100%;
-}
-
-.fixedviewport {
-    position:fixed !important;
-    position:absolute;
-    top:0;
-    right:0;
-    bottom:0;
-    left:0;
+    height: 60vh;
 }

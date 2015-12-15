@@ -4,53 +4,56 @@
 
 var myApp = angular.module('my-app');
 
-myApp.controller('statusCtrl', ['$scope', 'results', 'rsync','$q', '$location', 'toastr',
-    function ($scope, results, rsync, $q, $location, toastr) {
+myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
+    function ($scope, rsync, $q, $location, toastr) {
         "use strict";
-
-        if (!results.isResults) {
-            $location.url('/');
-            $location.replace();
-            return;
-        }
 
         $scope.isRunning = false;
         $scope.runningState =  {status:"Not running"};
         $scope.rawoutput = "";
 
-        $scope.$watch(function() {return results.isRunning}, function(newValue, oldValue){
-            $scope.isRunning = newValue;
+        rsync.status().then(function(status){
+            if (!status.isRunning && !status.isFinished) {
+                $location.path('/').replace();
+                return;
+            }
+
+            $scope.isRunning = status.isRunning;
+
+            if (status.isFinished)
+                $scope.runningState = {status:"Rsync finished"};
+            else (status.isRunning)
+                $scope.runningState = {status:"Rsync running"};
+
+            if (status.outputBuffer)
+                $scope.rawoutput = status.outputBuffer.join('\n');
+
         });
 
-        $scope.$watch(function() {return results.progress},  function(newValue){
-            $scope.runningState = newValue;
+        rsync.on('progress', function(data){
+           $scope.runningState = {
+               status: data.state.file,
+               percent: data.state.percent >= 0 && data.percent <= 100?  data.percent: 100
+           }
         });
 
-        $scope.$watch(function() {return results.resultBufferStr}, function(newValue){
-            $scope.rawoutput = newValue;
+        rsync.on('rawoutput', function(data){
+           $scope.rawoutput += data +'\n';
+        });
+
+        rsync.on('stop', function(){
+            $scope.runningState = {status:"Rsync finished"}
         });
 
         $scope.stop = function () {
             rsync.stopRsync().then(function () {
-                results.isRunning = false;
+                $scope.back();
             }).catch(proccedError);
         };
 
         $scope.back = function () {
-            results.goFromStatusToSetup();
+            $location.path('/setup');
         };
-
-        if (!results.isRunning) {
-            rsync.runRsync(results.rsyncConfig.path,
-                results.rsyncConfig.extraArgs)
-                .then(function(){
-                    results.isRunning = true;
-                })
-                .catch(
-                function (err) {
-                    toastr.error(err.message);
-                });
-        }
 
         function proccedError(err) {
 

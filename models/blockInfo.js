@@ -6,7 +6,7 @@ var Promise = require('promise');
 var RsyncError = require('./../helpers/RsyncError');
 var Rsync = require('./rsync');
 var sr = require('./../helpers/scriptRunner');
-var log = require('./../helpers/logger')();
+var log = require('./../helpers/logger')(module);
 
 
 function getDevInfo() {
@@ -204,7 +204,18 @@ function getRsyncDryrunFile(dev) {
         log.debug("Start 'rsync dryrun'");
         log.debug("rsync args: %s", args);
 
-        return rsync.start(args)
+        function delay(time){
+            return new Promise(function (resolve){
+               setTimeout(resolve, time);
+            });
+        }
+
+
+
+        return delay(5000)
+            .then(function(){
+                return rsync.start(args);
+            })
             .then(function (res) {
                 return res.done;
             })

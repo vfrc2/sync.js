@@ -4,25 +4,29 @@
 
 var myApp = angular.module('my-app');
 
-myApp.controller('setupCtrl', ['$scope', 'results', 'rsync', 'socket', '$q', '$location', 'toastr',
-    function ($scope, results, rsync, socket, $q, $location, toastr) {
+myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 'toastr',
+    function ($scope, sysinfo, rsync, $q, $location, toastr) {
         "use strict";
 
-        if (results.isRunning) {
-            $location.path('/status/').replace();
-            return;
-        }
+        $scope.viewLoading = true;
 
-        rsync.sysinfo().then(function (results) {
+        rsync.status()
+            .then(function (status) {
 
-            if (results.warning && results.warning.length > 0);
-            results.warning.forEach(function (warn) {
-                toastr.warning(warn);
+                if (status.isRunning) {
+                    $location.path('/status');
+                    throw new Error("Rsync already running!");
+                }
+
+                return sysinfo.get();
+            })
+            .then(function (results) {
+                initView(results);
+            })
+            .catch(proccedError)
+            .finally(function(){
+                $scope.viewLoading = false;
             });
-
-            initView(results);
-
-        }).catch(proccedError);
 
         $scope.run = function (device) {
 
@@ -46,10 +50,16 @@ myApp.controller('setupCtrl', ['$scope', 'results', 'rsync', 'socket', '$q', '$l
                     item.childs.forEach(checkItem);
             }
 
-            results.goFromSetupToStatus({
-                path: device.mount,
-                extraArgs: extraArgs
-            });
+            rsync.runRsync(device.mount, extraArgs)
+                .then(function () {
+                    $location.path('/status');
+                })
+                .catch(
+                    function (err) {
+                        toastr.error(err.message);
+                    });
+
+
         };
 
         $scope.selectChange = function (data) {
@@ -69,7 +79,8 @@ myApp.controller('setupCtrl', ['$scope', 'results', 'rsync', 'socket', '$q', '$l
 
         function proccedError(err) {
             $scope.canRun = false;
-            toastr.error(err.message);
+            if (err.message !== "Rsync already running!")
+                toastr.error(err.message);
         }
 
         function initView(data) {
@@ -108,11 +119,14 @@ myApp.controller('setupCtrl', ['$scope', 'results', 'rsync', 'socket', '$q', '$l
 
             $scope.selectedDevice = $scope.devices[0];
 
-            //$scope.$on('$destroy', function (event) {
-            //    socket.removeAllListeners();
-            //    // or something like
-            //    // socket.removeListener(this);
-            //});
+
         }
+
+        $scope.$on('$destroy', function (event) {
+            // WARNING
+            // this staf remove ALL listeners! => can't be
+            // used when 2 or more controllers active in same time
+            rsync.removeAllListeners();
+        });
 
     }]);

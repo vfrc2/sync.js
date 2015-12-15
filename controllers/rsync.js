@@ -9,8 +9,8 @@
  * /websockerStatus - connect to web socket to recieve current status
  */
 
-var log = require('./../helpers/logger')();
-var reqLog = require('./../helpers/logger')("request");
+var log = require('./../helpers/logger')(module);
+var reqLog = require('./../helpers/logger')(module, "request");
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -25,23 +25,22 @@ router.use(bodyParser.json());
 
 router.use(logApiRequest);
 
-router.get('/status', function (req, res) {
+router.get('/status', function (req, res, next) {
 
-    if (rsync.isRunning()) {
+    try {
+
         var obj = {
-            state: "running",
-            status: rsync.getBuffer()
-        }
-    } else {
-        var obj = {
-            state: "not running",
-            status: ""
-        }
+            isRunning: rsync.isRunning(),
+            isFinished: rsync.isFinished(),
+            outputBuffer: rsync.isRunning() || rsync.isFinished() ? rsync.getBuffer() : []
+        };
+
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify(obj));
+
+    } catch (error) {
+        next(error);
     }
-
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(obj));
-
 });
 
 router.post('/start', function (req, res, next) {
@@ -115,10 +114,10 @@ router.use(rsyncErrorHandler);
 function rsyncErrorHandler(err, req, res, next) {
     if (err instanceof RsyncError) {
 
-        reqLog.error("Rsync error", err.message );
-        reqLog.debug("Error stack", err.stack );
-        log.error("Rsync error", err.message );
-        log.debug("Error stack", err.stack );
+        reqLog.error("Rsync error", err.message);
+        reqLog.debug("Error stack", err.stack);
+        log.error("Rsync error", err.message);
+        log.debug("Error stack", err.stack);
         res.statusCode = 500;
         res.end(err.message);
         return;
@@ -126,7 +125,7 @@ function rsyncErrorHandler(err, req, res, next) {
     next(err);
 }
 
-function logApiRequest(req, res, next){
+function logApiRequest(req, res, next) {
     reqLog.info("Request to %s", req.originalUrl);
     reqLog.debug("From %s", req.hostname, {
         originalUrl: req.originalUrl,
@@ -134,10 +133,10 @@ function logApiRequest(req, res, next){
         data: req.body
     });
     next();
-    reqLog.debug("Response data ",  {
-        headers: res.statusCode,
-        data: res.body
-    });
+    //reqLog.debug("Response data ", {
+    //    headers: res.statusCode,
+    //    data: res.body
+    //});
 }
 
 log.log('verbose', 'Rsync controller loaded');

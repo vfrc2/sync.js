@@ -4,7 +4,7 @@
  * Index for web server
  *
  */
-var log = require('./../helpers/logger')();
+var log = require('./../helpers/logger')(module);
 
 function createRouter(app) {
     var express = require('express');

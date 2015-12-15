@@ -1,7 +1,7 @@
 /**
  * Created by mlyasnikov on 12.11.2015.
  */
-var log = require('./../helpers/logger')();
+var log = require('./../helpers/logger')(module);
 var Promise = require('promise');
 var events = require('events');
 
@@ -17,6 +17,10 @@ function createRsync() {
     "use strict";
 
     var isRun = false;
+    var isFinished = false;
+
+    var outputBuffer = [];
+
     var child = null;
     var eventEmiter = new events.EventEmitter();
 
@@ -30,6 +34,7 @@ function createRsync() {
     var rsyncParser = require('./../helpers/rsyncParser');
 
     var ignoreCacheLastWrite = null;
+    var ignoreCacheTimeout = 20000; //ms
 
     this.on = function (event, calback) {
         eventEmiter.on(event, calback);
@@ -73,14 +78,26 @@ function createRsync() {
         cmd_args.push("--out-format=" + rsyncParser.RSYNC_FORMAT);
         cmd_args.push("--progress");
 
+        isRun = true;
+        isFinished = false;
+        outputBuffer = [];
+
         eventEmiter.emit('start', { title: "Process started"});
 
-        isRun = true;
         var me = this;
         return this._writeIgnoreCache(args)
-            .then(function () {
+            .then(function (ignoreFileName) {
+                if (ignoreFileName){
+                    log.debug("Add ignore filename " + ignoreFileName);
+                    cmd_args.push("--exclude-from=" +ignoreFileName);
+                }
                 log.debug("Rsync args", cmd_args);
                 return me._getRsyncSpawn(cmd_args)
+            })
+            .catch(function(err){
+                isRun = false;
+                isFinished = true;
+                throw err;
             })
             .then(function (res) {
 
@@ -99,11 +116,13 @@ function createRsync() {
                 res.stdout.encoding = 'utf8';
                 res.stdout.on('line', function (data) {
                     eventEmiter.emit('rawoutput', data);
+                    outputBuffer.push(data);
                     log.debug(data);
                 })
 
                 return {done:  res.done.finally(function () {
                         isRun = false;
+                        isFinished = true;
                     })
                     .then(function (exitcode) {
                         eventEmiter.emit('stop', {exitcode: exitcode});
@@ -129,20 +148,21 @@ function createRsync() {
     this.getBuffer = function getBuffer() {
         "use strict";
 
-        if (child != null)
-            return child.buffer;
+        if (isFinished || isRun)
+            return outputBuffer;
 
         throw new RsyncError("rsync not running!");
     }
 
     this.isRunning = function isRunning() {
         "use strict";
+        return isRun;
+    };
 
-        if (child != null)
-            return child.isRun;
-        else
-            return false;
-    }
+    this.isFinished = function isRunning() {
+        "use strict";
+        return isFinished;
+    };
 
     this.setConfig = function (config) {
 
@@ -181,7 +201,7 @@ function createRsync() {
             throw new RsyncError("Can't get origin path");
 
         if (!(target && target.path))
-            throw new RsyncError("Can't get remote path")
+            throw new RsyncError("Can't get remote path");
 
         var now = new Date();
 
@@ -191,7 +211,7 @@ function createRsync() {
         var notExist = !fs.existsSync(ignorefile);
         if (!notExist && ignoreCacheLastWrite &&
             ((now - ignoreCacheLastWrite) < ignoreCacheTimeout))
-            return;
+            return Promise.resolve(ignorefile);
 
         var args = [];
 
@@ -224,9 +244,14 @@ function createRsync() {
                     ignoreStream.write(ignoreLine + '\n');
                 });
 
-                return res.done.finally(
+                return res.done
+                    .then(function(){
+                        return ignorefile;
+                    })
+                    .finally(
                     function () {
                         ignoreStream.end();
+                        ignoreCacheLastWrite = new Date();
                     });
 
             });

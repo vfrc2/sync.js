@@ -4,8 +4,8 @@
 
 function createApiSocket(io) {
 
-    var reqLogger = require('./../helpers/logger')("request");
-    var logger = require('./../helpers/logger')();
+    var reqLogger = require('./../helpers/logger')(module,"request");
+    var logger = require('./../helpers/logger')(module);
 
     var rsync = require('./../models/rsyncService');
 

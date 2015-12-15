@@ -1,5 +1,5 @@
 var logger = require('./helpers/logger');
-var log = require('./helpers/logger')();
+var log = require('./helpers/logger')(module);
 
 var express = require('express');
 var app = express();
