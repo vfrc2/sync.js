@@ -7,7 +7,7 @@ function createApiSocket(io) {
     var reqLogger = require('./../helpers/logger')(module, "request");
     var logger = require('./../helpers/logger')(module);
 
-    var rsync = require('./../models/rsyncService');
+    var rsync = require('./../models/rsync-service');
 
     io.on('connection', function (socket) {
 

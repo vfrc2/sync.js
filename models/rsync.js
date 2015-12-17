@@ -5,9 +5,9 @@ var log = require('./../helpers/logger')(module);
 var Promise = require('promise');
 var events = require('events');
 
-var RsyncError = require("./../helpers/RsyncError");
+var RsyncError = require("./../helpers/rsync-error");
 
-var sr = require("./../helpers/scriptRunner");
+var sr = require("./../helpers/script-runner");
 var rsyncCmd = "rsync";
 
 var path = require('path');
@@ -31,7 +31,8 @@ function createRsync() {
     var ignoreFileName = '.ignore';
     var rsyncArgs = [];
 
-    var rsyncParser = require('./../helpers/rsyncParser');
+    var rsyncParser = require('./../helpers/rsync-parser');
+    var lineParser = require('stream-splitter');
 
     var ignoreCacheLastWrite = null;
     var ignoreCacheTimeout = 20000; //ms
@@ -104,34 +105,38 @@ function createRsync() {
                 child = res;
 
                 //))))
-                eventEmiter.emit('state', { title: "Start coping files" });
+                eventEmiter.emit('state', { title: "Start coping files" , type: 'start'});
 
                 res.stdout.encoding = "utf8";
+                res.stderr.encoding = "utf8";
+
                 res.stdout.on('file', function (token) {
                     eventEmiter.emit('file', token);
                 });
                 res.stdout.on('progress', function (token) {
                     eventEmiter.emit('progress', token);
                 });
-
-                res.stdout.encoding = 'utf8';
                 res.stdout.on('line', function (data) {
                     eventEmiter.emit('rawoutput', data);
                     outputBuffer.push(data);
                     log.debug(data);
-                })
+                });
+
+                res.stderr.on("token", function(data){
+                    eventEmiter.emit('rawoutput', data);
+                    outputBuffer.push(data);
+                    log.debug(data);
+                });
 
                 return {done:  res.done.finally(function () {
                         isRun = false;
                         isFinished = true;
                     })
                     .then(function (exitcode) {
-                        eventEmiter.emit('state', {title: "Rsync finished"});
+                        eventEmiter.emit('state', {title: "Rsync finished", type:'stop'});
                         return exitcode;
                     }).catch(function (err) {
-                        outputBuffer.push(err.message);
-                        eventEmiter.emit('rawoutput', err.message);
-                        eventEmiter.emit('state', {title: "Rsync exited with error " + err.message});
+                        eventEmiter.emit('state', {title: "Rsync exited with error " + err.message, type:'crash'});
                         throw(new RsyncError("rsync run error " + err.message));
                     })};
 
@@ -197,7 +202,8 @@ function createRsync() {
         return sr.spawn(rsyncCmd, args,
             {
                 detached: false,
-                pipe: rsyncParser()
+                pipe: rsyncParser(),
+                pipeErr: lineParser('\n')
             })
     }
 

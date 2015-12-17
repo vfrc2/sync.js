@@ -59,6 +59,9 @@ myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
 
         rsync.on('state', function(data){
             $scope.runningState = {status: data.title }
+            if (data.type &&
+                (data.type === 'stop' || data.type==='crash'))
+                $scope.isRunning = false;
         });
 
         $scope.stop = function () {

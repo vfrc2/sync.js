@@ -7,7 +7,7 @@ var assert = require('chai').assert; //actually call the function
 
 describe("Script runner", function () {
 
-    var sr = require('./../../helpers/scriptRunner');
+    var sr = require('./../../helpers/script-runner');
     var Promise = require("promise");
     var Stream = require("stream");
 

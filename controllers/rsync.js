@@ -16,9 +16,9 @@ var bodyParser = require('body-parser');
 
 var router = express.Router();
 
-var RsyncError = require('./../helpers/RsyncError');
-var rsync = require('./../models/rsyncService');
-var blockInfo = require('./../models/blockInfo');
+var RsyncError = require('./../helpers/rsync-error');
+var rsync = require('./../models/rsync-service');
+var blockInfo = require('./../models/block-info');
 
 router.use(bodyParser.json());
 

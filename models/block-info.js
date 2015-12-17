@@ -3,9 +3,9 @@
  */
 
 var Promise = require('promise');
-var RsyncError = require('./../helpers/RsyncError');
+var RsyncError = require('./../helpers/rsync-error');
 var Rsync = require('./rsync');
-var sr = require('./../helpers/scriptRunner');
+var sr = require('./../helpers/script-runner');
 var log = require('./../helpers/logger')(module);
 
 var MOUNT_PATH = '/mnt';
@@ -212,12 +212,7 @@ function getRsyncDryrunFile(dev) {
             });
         }
 
-
-
-        return delay(5000)
-            .then(function(){
-                return rsync.start(args);
-            })
+        return  rsync.start(args)
             .then(function (res) {
                 return res.done;
             })
