@@ -134,6 +134,7 @@ router.get('/sysinfo', function (req, res, next) {
     reqLog.debug("Start block dev info");
 
     blockInfo.getDevInfo.setRsyncConfig(req.appconfig.rsync);
+    blockInfo.getDevInfo.setConfig(req);
 
     var p = blockInfo.getDevInfo();
 

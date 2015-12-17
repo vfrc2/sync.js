@@ -7,10 +7,12 @@ var app = express();
 try {
     var config = getConfig();
 
-    logger.setConfing(config.log);
+    checkConfig(config);
+
+    logger.setConfing(config);
 
     log.log('verbose', "Starting server...");
-    var server = app.listen(config.webserver.port, function (err) {
+    var server = app.listen(config.port, function (err) {
         "use strict";
 
         if (err != null) {
@@ -28,7 +30,7 @@ try {
 
     app.use(configMiddleware);
 
-    app.use(express.static('public'));
+    app.use(express.static(config.public));
 
     app.use(require("./controllers")(app));
 
@@ -36,6 +38,9 @@ try {
 
     app.use(errorHandler);
 } catch (err) {
+    if (err instanceof ConfigError) {
+        config.showHelp();
+    }
     consoleError(err);
 }
 
@@ -64,187 +69,105 @@ function configMiddleware(req, res, next) {
     next();
 }
 
+function ConfigError(message){
+    return this.message;
+}
+
 function getConfig() {
 
-    ///Get cmd line options
-    {
-        var args = require('yargs')
-            .usage('Usage: $0 [options] [-- rsync.args]')
+    /**
+     * Comandline args:
+     *
+     * ENV prefix SYNCJS_
+     */
 
-            .option('c', {
-                alias: 'config',
-                nargs: 1,
-                describe: 'config file'
-            })
+    var args = require('yargs')
+        //Web server options
+        .option('webserver.port', {
+            alias: ['p','port'],
+            group: 'Webserver:',
+            default: 3000,
+            nargs: 1,
+            describe: "listen server port",
 
-            .option('p', {
-                alias: 'port',
-                nargs: 1,
-                describe: "listen server port default: '3000'",
+        })
+        .option('webserver.apiroute', {
+            alias: 'apiroute',
+            group: 'Webserver:',
+            default: '/api',
+            nargs: 1,
+            describe: "api route for service"
+        })
+        .option('webserver.www', {
+            group: 'Webserver:',
+            default: true,
+            describe: "enable web interface (-no-www to disable www client)"
+        })
 
-            })
-            .option('r', {
-                alias: 'apiroute',
-                nargs: 1,
-                describe: "api route for service default: '/api'",
-            })
+        //Rsync options
+        .option('rsync.ignorefile', {
+            alias: 'ignorefile',
+            group: 'Rsync:',
+            default: '.syncIgnore',
+            nars: 1,
+            description: "name for ignore file placed on ext hdd"
+        })
 
-            .option('i', {
-                alias: 'ignorefile',
-                nars: 1,
-                description: "name for ignore file placed on ext hdd default: '.syncIgnore' ",
-            })
+        .option('rsync.from', {
+            alias: ['from','f'],
+            group: 'Rsync:',
+            //demand: true,
+            nargs: 1,
+            describe: 'origin of files, loacl path',
+        })
 
-            .option('f', {
-                alias: 'from',
-                nargs: 1,
-                describe: 'origin of files, loacl path',
-            })
+        .option('rsync.target', {
+            alias: ['target','t'],
+            group: 'Rsync:',
+            //demand: true,
+            nargs: 1,
+            describe: 'target of files, can be remote path user@host:path'
+        })
+        .option('rsync.user', {
+            nargs: 1,
+            group: 'Rsync:',
+            describe: 'remote machine user'
+        })
+        .option('rsync.host', {
+            nargs: 1,
+            group: 'Rsync:',
+            describe: 'remote host address'
+        })
+        //over options options
+        .option('v', {
+            alias: "verbose",
+            description: 'set global log level to debug'
+        })
+        .env("SYNCJS_")
+        .usage('Usage: $0 [options] [-- rsync.args]')
+        .config('c', "Config file")
+        .alias('c', 'config')
+        .default('c', './config.json')
+        .help('h')
+        .alias('h', 'help')
+        .epilog('vfrc29@gmail.com, MIT license 2015')
+        .argv;
 
-            .option('t', {
-                alias: 'target',
-                nargs: 1,
-                describe: 'target of files, can be remote path user@host:path'
-            })
-            .option('tuser', {
-                nargs: 1,
-                describe: 'remote machine user'
-            })
-            .option('thost', {
-                nargs: 1,
-                describe: 'remote host address'
-            })
-            .option('v', {
-                alias: "verbose",
-                description: 'set global log level to debug'
-            })
+    if (!args.public)
+        args.public = './public';
 
-            .help('h')
-            .alias('h', 'help')
-            .epilog('vfrc29@gmail.com, MIT license 2015')
-            .argv;
-    }
-
-    var config = {
-        webserver: {
-            port: 3000,
-            apiRoute: '/api'
-        },
-        rsync: {
-            //from:  requred path
-            //target:  requred string or object
-            //        {
-            //          path: path on remote machine, from where get ignore filelist
-            //          user: optional for ssh args
-            //          host: optional for ssh args
-            //        }
-            ignoreFilename: '.syncIgnore',
-            defaultArgs: []
-        },
-
-    };
+    if (!args.mountpath)
+        args.mountpath = '/media';
 
     if (args.verbose)
         logger.setGlobalLevel('debug');
 
-    //rewrite from config file config.json
-    {
-        var fs = require('fs');
-        var configFile = './config.json';
-
-        if (args.config)
-            configFile = args.config;
-
-        if (fs.existsSync(configFile)) {
-            log.debug("Reading config %s", configFile);
-            var jsonconfig = require(configFile);
-            if (jsonconfig.webserver) {
-                if (jsonconfig.webserver.port)
-                    config.webserver.port = jsonconfig.webserver.port;
-                if (jsonconfig.webserver.apiRoute)
-                    config.webserver.apiRoute = jsonconfig.webserver.apiRoute;
-            }
-
-            if (jsonconfig.rsync) {
-                if (jsonconfig.rsync.from)
-                    config.rsync.from = jsonconfig.rsync.from;
-
-                if (jsonconfig.rsync.target) {
-                    if (typeof jsonconfig.rsync.target === 'object') {
-                        config.rsync.target = {}
-                        if (jsonconfig.rsync.target.path)
-                            config.rsync.target.path = jsonconfig.rsync.target.path;
-                        if (jsonconfig.rsync.target.user)
-                            config.rsync.target.user = jsonconfig.rsync.target.user;
-                        if (jsonconfig.rsync.target.host)
-                            config.rsync.target.host = jsonconfig.rsync.target.host;
-                    } else {
-                        config.rsync.target = {
-                            path: jsonconfig.rsync.target
-                        }
-                    }
-                }
-
-                if (jsonconfig.rsync.ignoreFilename)
-                    config.rsync.ignoreFilename = jsonconfig.rsync.ignoreFilename;
-                if (jsonconfig.rsync.defaultArgs)
-                    config.rsync.defaultArgs =
-                        config.rsync.defaultArgs.concat(jsonconfig.rsync.defaultArgs);
-
-
-            }
-            if (jsonconfig.log) {
-
-                if (typeof(jsonconfig.log) === 'string' &&
-                    !fs.existsSync(jsonconfig.log))
-                    config.log = undefined;
-                else {
-                    config.log = jsonconfig.log;
-                }
-            }
-
-
-        } else {
-            log.warn("No config file '%s'!", configFile);
-        }
-
-    }
-
-    //rewrite from commandline args
-    {
-        if (args.port)
-            config.webserver.port = args.port;
-
-        if (args.apiroute)
-            config.webserver.apiRoute = args.apiroute;
-
-        if (args.ignorefile)
-            config.rsync.ignoreFilename = args.ignorefile;
-
-        if (args.from)
-            config.rsync.from = args.from;
-
-        if (args.target)
-            config.rsync.target.path = args.target;
-
-        if (args.tuser)
-            config.rsync.target.user = args.tuser;
-
-        if (args.thost)
-            config.rsync.target.host = args.thost;
-
-        if (args._)
-            config.rsync.defaultArgs.concat(args._);
-    }
-
-    //checking config
-
-    if (!config.rsync.from)
-        throw new Error("Rsync oring path missing");
-
-    if (!config.rsync.target.path)
-        throw  new Error("Rsync target path missing!");
-
-    return config;
+    return args;
 }
+
+function checkConfig(args){
+    if (!args.rsync.from || !args.rsync.target)
+        throw new ConfigError("Rsync from and target paths are required");
+}
+
 

@@ -8,12 +8,13 @@ var Rsync = require('./rsync');
 var sr = require('./../helpers/scriptRunner');
 var log = require('./../helpers/logger')(module);
 
+var MOUNT_PATH = '/mnt';
 
 function getDevInfo() {
 
     log.debug("Start 'mount | grep /media'");
     var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
-        [],
+        [MOUNT_PATH],
         {
             pipe: require("stream-splitter")('\n')
         });
@@ -50,6 +51,7 @@ function getDevInfo() {
                             getUdev(dev),
                             getRsyncDryrunFile(dev)
                                 .catch(function (err) {
+                                    log.error("Dev '%s'  get info error", dev.dev, err);
                                     deviceWarning.push("Error geting ignore file list " +
                                         err.message);
                                     return [];
@@ -287,6 +289,13 @@ getDevInfo._rsyncConfig = {}
 
 getDevInfo.setRsyncConfig = function (config) {
     getDevInfo._rsyncConfig = config;
-}
+};
+
+getDevInfo.setConfig = function(config){
+    if (config.mountPath)
+        MOUNT_PATH = config.mountPath;
+};
+
+
 
 module.exports.getDevInfo = getDevInfo;

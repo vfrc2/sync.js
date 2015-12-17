@@ -33,7 +33,8 @@ function createLogger(child_module, tag) {
 
 createLogger.setConfing = function (config) {
 
-    log4js.configure(config);
+    if (config.appenders)
+        log4js.configure(config);
 
     if (config.appenders &&
         config.appenders.filter(
@@ -42,8 +43,6 @@ createLogger.setConfing = function (config) {
                     return app;
             }).length < 1)
             log4js.addAppender(log4js.appenders.console());
-
-
 
 };
 

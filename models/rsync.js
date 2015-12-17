@@ -206,7 +206,7 @@ function createRsync() {
         if (!config.path)
             throw new RsyncError("Can't get origin path");
 
-        if (!(target && target.path))
+        if (!target)
             throw new RsyncError("Can't get remote path");
 
         var now = new Date();
@@ -223,7 +223,7 @@ function createRsync() {
 
         args.push("-r");
         args.push("--out-format=" + rsyncParser.RSYNC_FORMAT);
-        args.push(target.path);
+        args.push(target);
         args.push("/tmp");
         args.push("-n");
 
