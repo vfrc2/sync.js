@@ -83,19 +83,19 @@ function createRsync() {
         isFinished = false;
         outputBuffer = [];
 
-        eventEmiter.emit('state', { title: "Start rsync", type: "start"});
+        eventEmiter.emit('state', {title: "Start rsync", type: "start"});
 
         var me = this;
         return this._writeIgnoreCache(args)
             .then(function (ignoreFileName) {
-                if (ignoreFileName){
+                if (ignoreFileName) {
                     log.debug("Add ignore filename " + ignoreFileName);
-                    cmd_args.push("--exclude-from=" +ignoreFileName);
+                    cmd_args.push("--exclude-from=" + ignoreFileName);
                 }
                 log.debug("Rsync args", cmd_args);
                 return me._getRsyncSpawn(cmd_args)
             })
-            .catch(function(err){
+            .catch(function (err) {
                 isRun = false;
                 isFinished = true;
                 throw err;
@@ -105,7 +105,7 @@ function createRsync() {
                 child = res;
 
                 //))))
-                eventEmiter.emit('state', { title: "Start coping files" , type: 'start'});
+                eventEmiter.emit('state', {title: "Start coping files", type: 'start'});
 
                 res.stdout.encoding = "utf8";
                 res.stderr.encoding = "utf8";
@@ -122,23 +122,25 @@ function createRsync() {
                     log.debug(data);
                 });
 
-                res.stderr.on("token", function(data){
+                res.stderr.on("token", function (data) {
                     eventEmiter.emit('rawoutput', data);
                     outputBuffer.push(data);
                     log.debug(data);
                 });
 
-                return {done:  res.done.finally(function () {
-                        isRun = false;
-                        isFinished = true;
-                    })
-                    .then(function (exitcode) {
-                        eventEmiter.emit('state', {title: "Rsync finished", type:'stop'});
-                        return exitcode;
-                    }).catch(function (err) {
-                        eventEmiter.emit('state', {title: "Rsync exited with error " + err.message, type:'crash'});
-                        throw(new RsyncError("rsync run error " + err.message));
-                    })};
+                return {
+                    done: res.done.finally(function () {
+                            isRun = false;
+                            isFinished = true;
+                        })
+                        .then(function (exitcode) {
+                            eventEmiter.emit('state', {title: "Rsync finished", type: 'stop'});
+                            return exitcode;
+                        }).catch(function (err) {
+                            eventEmiter.emit('state', {title: "Rsync exited with error " + err.message, type: 'crash'});
+                            throw(new RsyncError("rsync run error " + err.message));
+                        })
+                };
 
             });
 
@@ -189,11 +191,14 @@ function createRsync() {
         if (config.from)
             from = config.from;
 
-        if (config.ignoreFilename)
-            ignoreFileName = config.ignoreFilename;
+        if (config.ignorefile)
+            ignoreFileName = config.ignorefile;
 
         if (config.defaultArgs)
-            rsyncArgs = config.defaultArgs;
+            if (!config.defaultArgs.push)
+                rsyncArgs = [config.defaultArgs];
+            else
+                rsyncArgs = config.defaultArgs;
 
 
     };
@@ -257,14 +262,14 @@ function createRsync() {
                 });
 
                 return res.done
-                    .then(function(){
+                    .then(function () {
                         return ignorefile;
                     })
                     .finally(
-                    function () {
-                        ignoreStream.end();
-                        ignoreCacheLastWrite = new Date();
-                    });
+                        function () {
+                            ignoreStream.end();
+                            ignoreCacheLastWrite = new Date();
+                        });
 
             });
 
