@@ -8,6 +8,7 @@ function createApiSocket(io) {
     var logger = require('./../helpers/logger')(module);
 
     var rsync = require('./../models/rsyncService');
+    var blockdev = require('./../models/blockInfo');
 
     io.on('connection', function (socket) {
 
@@ -73,6 +74,17 @@ function createApiSocket(io) {
      */
     rsync.on('rawoutput', function (data) {
         io.emit('rsync.rawoutput', data);
+    });
+
+    /**
+     * @api {event} blockdev.newdevice Event when new device connected
+     * @apiGroup Websocket Rsync
+     * @apiDescription
+     * Fire when new device connected to host, using fs.watch on /media for new directory
+     * @apiSuccess {string} mount path
+     */
+    blockdev.on("device.connected", function(data){
+       io.emit('blockdev.newdevice', data);
     });
 
     logger.debug("Socket.io initialized");

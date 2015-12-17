@@ -3,10 +3,37 @@
  */
 
 var Promise = require('promise');
+var fs = require('fs');
+var events = require('events');
+
 var RsyncError = require('./../helpers/RsyncError');
 var Rsync = require('./rsync');
 var sr = require('./../helpers/scriptRunner');
 var log = require('./../helpers/logger')(module);
+
+
+function CreateBlockInfo(config) {
+
+    var system_conf = config || {
+            mountPath: "/media/vfrc2"
+        };
+
+    var eventEmiter = new events.EventEmitter();
+
+    this.getDevInfo = getDevInfo;
+
+    this.on = function(event, callback){
+        eventEmiter.on(event, callback);
+    };
+
+    log.debug("Set watcher for dir " + system_conf.mountPath);
+    var watcher = fs.watch(system_conf.mountPath, function(event, filename){
+        log.debug("Dir " + system_conf.mountPath +"  trigered!" + event);
+        //if (event === 'change')
+            eventEmiter.emit('device.connected', filename);
+    });
+
+}
 
 
 function getDevInfo() {
@@ -283,10 +310,17 @@ function _fillDev(dev, atrs) {
 
 }
 
+function getMountWatcher(){
+
+    if (system_conf.mountPath && fs.existsSync(system_conf.mountPath))
+        return fs.watch(system_conf.mountPath);
+
+}
+
 getDevInfo._rsyncConfig = {}
 
 getDevInfo.setRsyncConfig = function (config) {
     getDevInfo._rsyncConfig = config;
 }
 
-module.exports.getDevInfo = getDevInfo;
+module.exports = new CreateBlockInfo();

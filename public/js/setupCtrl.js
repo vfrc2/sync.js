@@ -8,25 +8,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
     function ($scope, sysinfo, rsync, $q, $location, toastr) {
         "use strict";
 
-        $scope.viewLoading = true;
-
-        rsync.status()
-            .then(function (status) {
-
-                if (status.isRunning) {
-                    $location.path('/status');
-                    throw new Error("Rsync already running!");
-                }
-
-                return sysinfo.get();
-            })
-            .then(function (results) {
-                initView(results);
-            })
-            .catch(proccedError)
-            .finally(function(){
-                $scope.viewLoading = false;
-            });
+        start();
 
         $scope.run = function (device) {
 
@@ -83,6 +65,29 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                 toastr.error(err.message);
         }
 
+        function start(){
+            $scope.viewLoading = true;
+
+            rsync.status()
+                .then(function (status) {
+
+                    if (status.isRunning) {
+                        $location.path('/status');
+                        throw new Error("Rsync already running!");
+                    }
+
+                    return sysinfo.get();
+                })
+                .then(function (results) {
+                    initView(results);
+                })
+                .catch(proccedError)
+                .finally(function(){
+                    $scope.viewLoading = false;
+                });
+
+        }
+
         function initView(data) {
 
             $scope.devices = data.devices;
@@ -122,11 +127,16 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
         }
 
+        sysinfo.on('newdevice', function(){
+            toastr.info("New device!");
+        });
+
         $scope.$on('$destroy', function (event) {
             // WARNING
             // this staf remove ALL listeners! => can't be
             // used when 2 or more controllers active in same time
             rsync.removeAllListeners();
+            sysinfo.removeAllListeners();
         });
 
     }]);
