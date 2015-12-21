@@ -64,11 +64,98 @@
     }
   },
   {
+    "type": "post",
+    "url": "/start",
+    "title": "Start rsync",
+    "name": "PostStart",
+    "group": "Rsync",
+    "description": "<p>Start rsync process</p>",
+    "parameter": {
+      "fields": {
+        "Parameter": [
+          {
+            "group": "Parameter",
+            "type": "string",
+            "optional": false,
+            "field": "path",
+            "description": "<p>Path to external hdd</p>"
+          },
+          {
+            "group": "Parameter",
+            "type": "string[]",
+            "optional": false,
+            "field": "extraArgs",
+            "description": "<p>Extra args for rsync</p>"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Request-Example:",
+          "content": " {\n    \"path\": \"full path where to copy file (ext hdd path)\",\n    \"extraArgs\": \"extra args for rsync\"\n}",
+          "type": "json"
+        }
+      ]
+    },
+    "version": "0.0.0",
+    "filename": "controllers/rsync.js",
+    "groupTitle": "Rsync",
+    "error": {
+      "fields": {
+        "Error 4xx": [
+          {
+            "group": "Error 4xx",
+            "optional": false,
+            "field": "Rsync",
+            "description": "<p>Error 500</p>"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Error-Response:",
+          "content": "HTTP/1.1 500 Internal Server Error\n{\n  \"error\": \"message\"\n}",
+          "type": "json"
+        }
+      ]
+    }
+  },
+  {
+    "type": "post",
+    "url": "/stop",
+    "title": "Stop running rsync",
+    "name": "PostStop",
+    "group": "Rsync",
+    "description": "<p>Request to stop running rsync</p>",
+    "version": "0.0.0",
+    "filename": "controllers/rsync.js",
+    "groupTitle": "Rsync",
+    "error": {
+      "fields": {
+        "Error 4xx": [
+          {
+            "group": "Error 4xx",
+            "optional": false,
+            "field": "Rsync",
+            "description": "<p>Error 500</p>"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "Error-Response:",
+          "content": "HTTP/1.1 500 Internal Server Error\n{\n  \"error\": \"message\"\n}",
+          "type": "json"
+        }
+      ]
+    }
+  },
+  {
     "type": "get",
     "url": "/sysinfo",
     "title": "Get ext hdd info",
     "name": "GetSysinfo",
-    "group": "Rsync",
+    "group": "Sysinfo",
     "description": "<p>Get drives mounted to /media and stat info about each</p>",
     "success": {
       "fields": {
@@ -165,95 +252,8 @@
       ]
     },
     "version": "0.0.0",
-    "filename": "controllers/rsync.js",
-    "groupTitle": "Rsync",
-    "error": {
-      "fields": {
-        "Error 4xx": [
-          {
-            "group": "Error 4xx",
-            "optional": false,
-            "field": "Rsync",
-            "description": "<p>Error 500</p>"
-          }
-        ]
-      },
-      "examples": [
-        {
-          "title": "Error-Response:",
-          "content": "HTTP/1.1 500 Internal Server Error\n{\n  \"error\": \"message\"\n}",
-          "type": "json"
-        }
-      ]
-    }
-  },
-  {
-    "type": "post",
-    "url": "/start",
-    "title": "Start rsync",
-    "name": "PostStart",
-    "group": "Rsync",
-    "description": "<p>Start rsync process</p>",
-    "parameter": {
-      "fields": {
-        "Parameter": [
-          {
-            "group": "Parameter",
-            "type": "string",
-            "optional": false,
-            "field": "path",
-            "description": "<p>Path to external hdd</p>"
-          },
-          {
-            "group": "Parameter",
-            "type": "string[]",
-            "optional": false,
-            "field": "extraArgs",
-            "description": "<p>Extra args for rsync</p>"
-          }
-        ]
-      },
-      "examples": [
-        {
-          "title": "Request-Example:",
-          "content": " {\n    \"path\": \"full path where to copy file (ext hdd path)\",\n    \"extraArgs\": \"extra args for rsync\"\n}",
-          "type": "json"
-        }
-      ]
-    },
-    "version": "0.0.0",
-    "filename": "controllers/rsync.js",
-    "groupTitle": "Rsync",
-    "error": {
-      "fields": {
-        "Error 4xx": [
-          {
-            "group": "Error 4xx",
-            "optional": false,
-            "field": "Rsync",
-            "description": "<p>Error 500</p>"
-          }
-        ]
-      },
-      "examples": [
-        {
-          "title": "Error-Response:",
-          "content": "HTTP/1.1 500 Internal Server Error\n{\n  \"error\": \"message\"\n}",
-          "type": "json"
-        }
-      ]
-    }
-  },
-  {
-    "type": "post",
-    "url": "/stop",
-    "title": "Stop running rsync",
-    "name": "PostStop",
-    "group": "Rsync",
-    "description": "<p>Request to stop running rsync</p>",
-    "version": "0.0.0",
-    "filename": "controllers/rsync.js",
-    "groupTitle": "Rsync",
+    "filename": "controllers/sysinfo.js",
+    "groupTitle": "Sysinfo",
     "error": {
       "fields": {
         "Error 4xx": [
@@ -329,7 +329,7 @@
       ]
     },
     "version": "0.0.0",
-    "filename": "controllers/socket.js",
+    "filename": "controllers/rsync.js",
     "groupTitle": "Websocket_Rsync",
     "name": "WebsocketRsyncProgress"
   },
@@ -339,31 +339,60 @@
     "title": "Event new output line",
     "group": "Websocket_Rsync",
     "description": "<p>Fire when rsync emit new output line</p>",
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "string",
+            "optional": false,
+            "field": "line",
+            "description": "<p>New output line</p>"
+          }
+        ]
+      }
+    },
     "version": "0.0.0",
-    "filename": "controllers/socket.js",
+    "filename": "controllers/rsync.js",
     "groupTitle": "Websocket_Rsync",
     "name": "WebsocketRsyncRawoutput"
   },
   {
     "type": "websocket",
-    "url": "rsync.start",
-    "title": "Event start",
+    "url": "rsync.state",
+    "title": "Event on change rsync process state",
     "group": "Websocket_Rsync",
-    "description": "<p>Fire when rsync starts</p>",
+    "description": "<p>Fire when rsync starts or stops and when change state</p>",
+    "success": {
+      "fields": {
+        "Success 200": [
+          {
+            "group": "Success 200",
+            "type": "string",
+            "optional": false,
+            "field": "title",
+            "description": "<p>Message describe state</p>"
+          },
+          {
+            "group": "Success 200",
+            "type": "string",
+            "optional": false,
+            "field": "type",
+            "description": "<p>Enum of type of state can be start, stop or undeifined</p>"
+          }
+        ]
+      },
+      "examples": [
+        {
+          "title": "{",
+          "content": "{\n     title: \"Rsync start\"\n     type: \"start\"\n}",
+          "type": "json"
+        }
+      ]
+    },
     "version": "0.0.0",
-    "filename": "controllers/socket.js",
+    "filename": "controllers/rsync.js",
     "groupTitle": "Websocket_Rsync",
-    "name": "WebsocketRsyncStart"
-  },
-  {
-    "type": "websocket",
-    "url": "rsync.stop",
-    "title": "Event stop",
-    "group": "Websocket_Rsync",
-    "description": "<p>Fire when rsync finished or killed</p>",
-    "version": "0.0.0",
-    "filename": "controllers/socket.js",
-    "groupTitle": "Websocket_Rsync",
-    "name": "WebsocketRsyncStop"
+    "name": "WebsocketRsyncState"
   }
 ]

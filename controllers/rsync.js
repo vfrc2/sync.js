@@ -158,7 +158,7 @@ function CreateRsyncController(app) {
      * @apiDescription
      * Fire when rsync starts or stops and when change state
      * @apiSuccess {string}     title   Message describe state
-     * @apiSuccess [{string}]   type    Enum of type of state can be start, stop or undeifined
+     * @apiSuccess {string}   type    Enum of type of state can be start, stop or undeifined
      * @apiSuccessExample {json}
      * {
      *      title: "Rsync start"

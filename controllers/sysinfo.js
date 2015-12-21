@@ -35,21 +35,23 @@ function CreateSysinfo(app) {
      * @apiSuccess (device)     {Int}       available   Space left on device
      * @apiSuccess (device)     {Int}       size        Size (byte)
      * @apiSuccess (device)     {String}    model       Model name
-     * @apiSuccess (device)     {String[]}  ignoreList  List of file what will be copied (from rsync dryrun)
+     * @apiSuccess (device)     {String[]}  ignoreFiles List of file what will be copied (from rsync dryrun)
      * @apiSuccess (device)     {String[]}  warnings    List of non-critical errors while getting device info
      * @apiSuccess (root)       {String[]}  warnings    List of non-critical errors while getting devices info
      * @apiSuccessExample {json} HTTP-1/1 200:
-     * [
-     *  {
- *      "dev":"/dev/sdc1",
- *      "mount":"/media/vfrc2/Transcend",
- *      "used":19655368704,
- *      "available":12456087552,
- *      "size":32111456256,
- *      "model":"Transcend 32GB",
- *      "ignoreList":[]
- *  }
-     * ]
+     * {
+     *  "warnings": [],
+     *  "devices": {
+     *      "warnings":[],
+     *      "dev":"/dev/sdc1",
+     *      "mount":"/media/vfrc2/Transcend",
+     *      "used":19655368704,
+     *      "available":12456087552,
+     *      "size":32111456256,
+     *      "model":"Transcend 32GB",
+     *      "ignoreFiles":[]
+     *  }
+     * }
      *@apiUse rsyncError
      */
     router.get('/sysinfo', function (req, res, next) {

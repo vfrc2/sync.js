@@ -92,6 +92,8 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                     toastr.warning(war);
                 });
 
+            if (!$scope.devices.forEach)
+                throw new Error("Bad devices!");
 
             $scope.devices.forEach(function (dev) {
                 dev.dryRun = false;
@@ -128,5 +130,17 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
             // used when 2 or more controllers active in same time
             rsync.removeAllListeners();
         });
+
+        function getTree(files){
+
+            var root = [];
+
+            if (files.forEach){
+
+
+
+            }
+
+        }
 
     }]);
