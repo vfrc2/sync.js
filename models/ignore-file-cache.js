@@ -14,7 +14,7 @@ function CreateIgnoreFileCache() {
     this.cacheTimeout = 5 * 60 * 1000; //ms ~5 min
     this.rsyncConfig = {};
 
-    this.getCachedFile = function (devicePath) {
+    this.getCachedFile = function (devicePath, forceUpdate) {
 
         // check local cache if not, load from remote if not when check hdd file cache
         var deviceFile = null;
@@ -26,7 +26,7 @@ function CreateIgnoreFileCache() {
         log.debug("Check cache in " + this.localCacheName);
         return checkFile(this.localCacheName, this.cacheTimeout)
             .then(function (result) {
-                if (result) {
+                if (result || forceUpdate) {
                     log.debug("Cache is fresh");
                     return copyToHdd();
                 }

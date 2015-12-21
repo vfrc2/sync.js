@@ -21,6 +21,11 @@ function CreateSysinfo(app) {
 
     router.use(bodyParser.json());
 
+    router.use(function(req, res, next){
+        res.setHeader('cache-control','no-cache');
+        next();
+    });
+
     /**
      * @api {get} /sysinfo Get ext hdd info
      * @apiName GetSysinfo
@@ -63,6 +68,7 @@ function CreateSysinfo(app) {
             .then(_dryRunDevices(req))
             .then(function (data) {
                 res.setHeader('Content-Type', 'application/json');
+
                 res.end(JSON.stringify(data));
                 reqLog.debug("Send sysinfo:", data);
             })
@@ -82,10 +88,12 @@ function CreateSysinfo(app) {
 
             var deviceList = deviceResult.devices;
 
+            var forceUpdate = req.headers['cache-control'] === 'no-cache';
+
             if (!deviceList || !deviceList.forEach || !deviceList.length > 0)
                 return Promise.resolve(deviceResult);
 
-            var ignoreFile = req.rsyncCache.getCachedFile(null)
+            var ignoreFile = req.rsyncCache.getCachedFile(null, forceUpdate)
                 .then(function (ignoreFilename) {
                     return "--exclude-from=" + ignoreFilename;
                 }).catch(function (err) {

@@ -31,6 +31,11 @@ function CreateRsyncController(app) {
         next();
     });
 
+    router.use(function(req, res, next){
+        res.setHeader('cache-control','no-cache');
+        next();
+    });
+
     /**
      * @api {get} /status Get rsync status
      * @apiName GetStatus
@@ -65,6 +70,7 @@ function CreateRsyncController(app) {
             };
 
             res.setHeader('Content-Type', 'application/json');
+            res.setHeader('Cache-Control','no-cache');
             res.end(JSON.stringify(obj));
 
         } catch (error) {
@@ -91,6 +97,8 @@ function CreateRsyncController(app) {
 
         var rsync = req.apprsync;
 
+        var forceUpdate = req.headers['cache-control'] === 'no-cache';
+
         try {
             if (!(req.appconfig && req.appconfig.rsync))
                 next(new RsyncError("No config for rsync!"));
@@ -103,7 +111,7 @@ function CreateRsyncController(app) {
             var path = req.body.path;
             var extraArgs = req.body.extraArgs;
 
-            var cachedIgnore = req.rsyncCache.getCachedFile(path)
+            var cachedIgnore = req.rsyncCache.getCachedFile(path, forceUpdate)
                 .then(function (ignoreFilename) {
                     return "--exclude-from=" + ignoreFilename;
                 }).catch(function (err) {
@@ -231,6 +239,7 @@ function CreateRsyncController(app) {
 
 function _getSentOk(req, res) {
     return function () {
+        res.setHeader('Cache-Control','no-cache');
         res.statusCode = 200;
         res.end();
     }
