@@ -2,7 +2,7 @@
   //HJSON Config file for sync.js
 
   "webserver": {
-    "port": 3001,
+    "port": 3000,
     "apiRoute": "/api"
     //www: false, //- enable or disable www client
   },
@@ -16,13 +16,13 @@
 
     //remote storage
     //"target":"vfrc2@server.pyt.lan:/srv/data/share/videos",
-    "target":"./tests/_share/from",
+    "target":"./tests/_share/target",
 
     "ignoreFile": ".ignoreSync",
 
     "defaultArgs": [
       "-arF",
-      "--exclude='.rsync-filter'"
+      "--exclude=.rsync-filter"
     ]
   }
 }

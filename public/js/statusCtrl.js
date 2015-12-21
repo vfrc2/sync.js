@@ -22,7 +22,7 @@ myApp.controller('statusCtrl', ['$scope', 'rsync','$q', '$location', 'toastr',
 
             if (status.isFinished)
                 $scope.runningState = {status:"Rsync finished"};
-            else (status.isRunning)
+            else if (status.isRunning)
                 $scope.runningState = {status:"Rsync running"};
 
             if (status.outputBuffer)

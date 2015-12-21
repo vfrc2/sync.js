@@ -5,15 +5,18 @@
  *
  */
 var log = require('./../helpers/logger')(module);
+var express = require('express');
 
 function createRouter(app) {
-    var express = require('express');
+
     var router = express.Router();
 
-    log.log("verbose","Using rsync on api path %s", app.appconfig.webserver.apiRoute );
-    router.use(app.appconfig.webserver.apiRoute, require('./rsync'));
-    log.log('verbose','Using socket.io');
-    require('./socket')(app.appio);
+    var apiRoute = app.appconfig.webserver.apiRoute;
+
+    log.debug("Using rsync on api path %s", apiRoute );
+
+    router.use(apiRoute, require('./rsync')(app));
+    router.use(apiRoute, require('./sysinfo')(app));
 
     return router;
 }

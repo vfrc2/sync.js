@@ -3,53 +3,57 @@ var log = require('./helpers/logger')(module);
 
 var yargs =  require('yargs');
 
-var express = require('express');
-var app = express();
-
 try {
+
+    var express = require('express');
+
+    var app = express();
+
     var config = getConfig();
-
     checkConfig(config);
-
     logger.setConfing(config);
 
-    log.log('verbose', "Starting server...");
-    var server = app.listen(config.port, function (err) {
+    log.debug("Setting config", config);
+    app.appconfig = config;
+
+    log.debug("Starting server...");
+    var server = app.listen(config.webserver.port, function (err) {
         "use strict";
 
         if (err != null) {
-            consoleError(err);
+            log.error(err);
+            process.exit(1);
         }
 
         log.info("Server start at http://%s:%s", server.address().address, server.address().port);
     });
 
-    var io = require("socket.io")(server);
+    app.appsocket = require("socket.io")(server);
 
-    log.debug("Setting config", config);
-    app.appconfig = config;
-    app.appio = io;
-
-    app.use(configMiddleware);
+    app.use(function(req, res, next){
+        req.appconfig = config;
+        next();
+    });
 
     app.use(express.static(config.public));
-
     app.use(require("./controllers")(app));
 
     app.use(errorLog);
-
     app.use(errorHandler);
+
 } catch (err) {
+
     if (err instanceof ConfigError) {
         yargs.showHelp();
     }
-    consoleError(err);
+    log.error(err);
+
+    process.exit(1);
 }
 
 function errorLog(err, req, res, next) {
     "use strict";
-    log.error(err.message);
-    log.debug(err.stack);
+    log.error(err);
     next(err);
 };
 
@@ -59,17 +63,6 @@ function errorHandler(err, req, res, next) {
     res.end("Internal server error");
 };
 
-function consoleError(err) {
-
-    errorLog(err, undefined, undefined, function () {
-        process.exit(1);
-    })
-}
-
-function configMiddleware(req, res, next) {
-    req.appconfig = config;
-    next();
-}
 
 function ConfigError(message) {
     this.message = message;

@@ -39,12 +39,12 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                 extraArgs.push(device.extraArgs);
             }
 
-            device.ignoreList.forEach(checkItem);
+            device.ignoreFiles.forEach(checkItem);
 
             function checkItem(item) {
 
                 if (item.checked == true)
-                    extraArgs.push("--exclude '" + item.name + "'");
+                    extraArgs.push("--exclude=" + item.name);
 
                 if (item.childs && item.childs.length > 0)
                     item.childs.forEach(checkItem);
@@ -71,7 +71,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
         };
 
         $scope.selectAll = function (value) {
-            $scope.selectedDevice.ignoreList.forEach(function (item) {
+            $scope.selectedDevice.ignoreFiles.forEach(function (item) {
                 item.checked = value;
                 $scope.selectChange(item);
             })
@@ -100,9 +100,9 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
                 var ignoreFiles = [];
 
-                if (dev.ignoreList != undefined) {
+                if (dev.ignoreFiles != undefined) {
 
-                    dev.ignoreList.forEach(function (item) {
+                    dev.ignoreFiles.forEach(function (item) {
                         var newItem = {
                             checked: false,
                             name: item.filename,
@@ -113,7 +113,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                     });
                 }
 
-                dev.ignoreList = ignoreFiles;
+                dev.ignoreFiles = ignoreFiles;
 
             });
 
