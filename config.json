@@ -1,27 +1,29 @@
 {
+  //HJSON Config file for sync.js
+
   "webserver": {
     "port": 3000,
     "apiRoute": "/api"
+    //www: false, //- enable or disable www client
   },
 
   "rsync": {
 
+    //local storage use end / carefull!
+    //without / will sync dir as file : target_path/dirname
+    //with wil sync content of dir : target/content_of_dir
     "from": "./tests/_share/from",
 
-    "target": "./tests/_share/target",
+    //remote storage
+    "target":"vfrc2@server.pyt.lan:/srv/data/share/videos",
+    //"target":"./tests/_share/target",
 
-    "ignoreFileName": "ignore.lst",
+    "ignoreFile": ".ignoreSync",
 
     "defaultArgs": [
       "-arF",
-      "--exclude='.rsync-filter'"
-    ]
-  },
-  "log": {
-    "appenders":[
-      { "type": "file", "filename":"log.log" },
-      { "type": "file", "filename":"requests.log", "category": [
-        "webapp.request", "socket.request", "rsync.request"] }
+      "--exclude=.rsync-filter"
     ]
   }
 }
+

@@ -6,15 +6,22 @@ myApp.factory("sysinfo", ['$http', 'socket', '$q', function ($http, socket, $q) 
     "use strict";
 
     this.get = function () {
-        return $http.get('/api/sysinfo').then(
-            function (response) {
-                if (!response.data)
-                    throw new Error("Api call error! Null object!");
-                return response.data;
-            }
-        ).catch(function (err) {
-            throw new Error("Api call error! " + err.data);
-        });
+
+
+        return $http.get(
+            '/api/sysinfo',
+            {
+                headers:{'cache-control': 'private, max-age = 3600'}
+            })
+            .then(
+                function (response) {
+                    if (!response.data)
+                        throw new Error("Api call error! Null object!");
+                    return response.data;
+                }
+            ).catch(function (err) {
+                throw new Error("Api call error! " + err.data);
+            });
     };
 
     socket.on('blockdev.newdevice', function (data) {

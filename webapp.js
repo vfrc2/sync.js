@@ -1,48 +1,59 @@
 var logger = require('./helpers/logger');
 var log = require('./helpers/logger')(module);
 
-var express = require('express');
-var app = express();
+var yargs =  require('yargs');
 
 try {
+
+    var express = require('express');
+
+    var app = express();
+
     var config = getConfig();
+    checkConfig(config);
+    logger.setConfing(config);
 
-    logger.setConfing(config.log);
+    log.debug("Setting config", config);
+    app.appconfig = config;
 
-    log.log('verbose', "Starting server...");
+    log.debug("Starting server...");
     var server = app.listen(config.webserver.port, function (err) {
         "use strict";
 
         if (err != null) {
-            consoleError(err);
+            log.error(err);
+            process.exit(1);
         }
 
         log.info("Server start at http://%s:%s", server.address().address, server.address().port);
     });
 
-    var io = require("socket.io")(server);
+    app.appsocket = require("socket.io")(server);
 
-    log.debug("Setting config", config);
-    app.appconfig = config;
-    app.appio = io;
+    app.use(function(req, res, next){
+        req.appconfig = config;
+        next();
+    });
 
-    app.use(configMiddleware);
-
-    app.use(express.static('public'));
-
+    app.use(express.static(config.public));
     app.use(require("./controllers")(app));
 
     app.use(errorLog);
-
     app.use(errorHandler);
+
 } catch (err) {
-    consoleError(err);
+
+    if (err instanceof ConfigError) {
+        yargs.showHelp();
+    }
+    log.error(err);
+
+    process.exit(1);
 }
 
 function errorLog(err, req, res, next) {
     "use strict";
-    log.error(err.message);
-    log.debug(err.stack);
+    log.error(err);
     next(err);
 };
 
@@ -52,199 +63,118 @@ function errorHandler(err, req, res, next) {
     res.end("Internal server error");
 };
 
-function consoleError(err) {
 
-    errorLog(err, undefined, undefined, function () {
-        process.exit(1);
-    })
-}
-
-function configMiddleware(req, res, next) {
-    req.appconfig = config;
-    next();
+function ConfigError(message) {
+    this.message = message;
 }
 
 function getConfig() {
 
-    ///Get cmd line options
-    {
-        var args = require('yargs')
-            .usage('Usage: $0 [options] [-- rsync.args]')
+    /**
+     * Comandline args:
+     *
+     * ENV prefix SYNCJS_
+     */
+    var internalJSON = JSON;
 
-            .option('c', {
-                alias: 'config',
+    try {
+
+        JSON = require('hjson');
+
+        var args = yargs
+        //Web server options
+            .option('webserver.port', {
+                alias: ['p', 'port'],
+                group: 'Webserver:',
+                default: 3000,
                 nargs: 1,
-                describe: 'config file'
-            })
-
-            .option('p', {
-                alias: 'port',
-                nargs: 1,
-                describe: "listen server port default: '3000'",
+                describe: "listen server port",
 
             })
-            .option('r', {
+            .option('webserver.apiroute', {
                 alias: 'apiroute',
+                group: 'Webserver:',
+                default: '/api',
                 nargs: 1,
-                describe: "api route for service default: '/api'",
+                describe: "api route for service"
+            })
+            .option('webserver.www', {
+                group: 'Webserver:',
+                default: true,
+                describe: "enable web interface (-no-www to disable www client)"
             })
 
-            .option('i', {
+            //Rsync options
+            .option('rsync.ignorefile', {
                 alias: 'ignorefile',
+                group: 'Rsync:',
+                default: '.syncIgnore',
                 nars: 1,
-                description: "name for ignore file placed on ext hdd default: '.syncIgnore' ",
+                description: "name for ignore file placed on ext hdd"
             })
 
-            .option('f', {
-                alias: 'from',
+            .option('rsync.from', {
+                alias: ['from', 'f'],
+                group: 'Rsync:',
+                //demand: true,
                 nargs: 1,
                 describe: 'origin of files, loacl path',
             })
 
-            .option('t', {
-                alias: 'target',
+            .option('rsync.target', {
+                alias: ['target', 't'],
+                group: 'Rsync:',
+                //demand: true,
                 nargs: 1,
                 describe: 'target of files, can be remote path user@host:path'
             })
-            .option('tuser', {
+            .option('rsync.user', {
                 nargs: 1,
+                group: 'Rsync:',
                 describe: 'remote machine user'
             })
-            .option('thost', {
+            .option('rsync.host', {
                 nargs: 1,
+                group: 'Rsync:',
                 describe: 'remote host address'
             })
+            //over options options
             .option('v', {
                 alias: "verbose",
                 description: 'set global log level to debug'
             })
-
+            .env("SYNCJS_")
+            .usage('Usage: $0 [options] [-- rsync.args]')
+            .config('c', "Config file")
+            .alias('c', 'config')
+            .default('c', './config.json')
             .help('h')
             .alias('h', 'help')
             .epilog('vfrc29@gmail.com, MIT license 2015')
             .argv;
+
+        if (!args.public)
+            args.public = './public';
+
+        if (!args.mountpath)
+            args.mountpath = '/media';
+
+        if (args.verbose)
+            logger.setGlobalLevel('debug');
+
+        return args;
     }
-
-    var config = {
-        webserver: {
-            port: 3000,
-            apiRoute: '/api'
-        },
-        rsync: {
-            //from:  requred path
-            //target:  requred string or object
-            //        {
-            //          path: path on remote machine, from where get ignore filelist
-            //          user: optional for ssh args
-            //          host: optional for ssh args
-            //        }
-            ignoreFilename: '.syncIgnore',
-            defaultArgs: []
-        },
-
-    };
-
-    if (args.verbose)
-        logger.setGlobalLevel('debug');
-
-    //rewrite from config file config.json
-    {
-        var fs = require('fs');
-        var configFile = './config.json';
-
-        if (args.config)
-            configFile = args.config;
-
-        if (fs.existsSync(configFile)) {
-            log.debug("Reading config %s", configFile);
-            var jsonconfig = require(configFile);
-            if (jsonconfig.webserver) {
-                if (jsonconfig.webserver.port)
-                    config.webserver.port = jsonconfig.webserver.port;
-                if (jsonconfig.webserver.apiRoute)
-                    config.webserver.apiRoute = jsonconfig.webserver.apiRoute;
-            }
-
-            if (jsonconfig.rsync) {
-                if (jsonconfig.rsync.from)
-                    config.rsync.from = jsonconfig.rsync.from;
-
-                if (jsonconfig.rsync.target) {
-                    if (typeof jsonconfig.rsync.target === 'object') {
-                        config.rsync.target = {}
-                        if (jsonconfig.rsync.target.path)
-                            config.rsync.target.path = jsonconfig.rsync.target.path;
-                        if (jsonconfig.rsync.target.user)
-                            config.rsync.target.user = jsonconfig.rsync.target.user;
-                        if (jsonconfig.rsync.target.host)
-                            config.rsync.target.host = jsonconfig.rsync.target.host;
-                    } else {
-                        config.rsync.target = {
-                            path: jsonconfig.rsync.target
-                        }
-                    }
-                }
-
-                if (jsonconfig.rsync.ignoreFilename)
-                    config.rsync.ignoreFilename = jsonconfig.rsync.ignoreFilename;
-                if (jsonconfig.rsync.defaultArgs)
-                    config.rsync.defaultArgs =
-                        config.rsync.defaultArgs.concat(jsonconfig.rsync.defaultArgs);
-
-
-            }
-            if (jsonconfig.log) {
-
-                if (typeof(jsonconfig.log) === 'string' &&
-                    !fs.existsSync(jsonconfig.log))
-                    config.log = undefined;
-                else {
-                    config.log = jsonconfig.log;
-                }
-            }
-
-
-        } else {
-            log.warn("No config file '%s'!", configFile);
-        }
-
+    catch (err) {
+        throw err;
     }
-
-    //rewrite from commandline args
-    {
-        if (args.port)
-            config.webserver.port = args.port;
-
-        if (args.apiroute)
-            config.webserver.apiRoute = args.apiroute;
-
-        if (args.ignorefile)
-            config.rsync.ignoreFilename = args.ignorefile;
-
-        if (args.from)
-            config.rsync.from = args.from;
-
-        if (args.target)
-            config.rsync.target.path = args.target;
-
-        if (args.tuser)
-            config.rsync.target.user = args.tuser;
-
-        if (args.thost)
-            config.rsync.target.host = args.thost;
-
-        if (args._)
-            config.rsync.defaultArgs.concat(args._);
+    finally {
+        JSON = internalJSON;
     }
-
-    //checking config
-
-    if (!config.rsync.from)
-        throw new Error("Rsync oring path missing");
-
-    if (!config.rsync.target.path)
-        throw  new Error("Rsync target path missing!");
-
-    return config;
 }
+
+function checkConfig(args) {
+    if (!args.rsync.from || !args.rsync.target)
+        throw new ConfigError("Rsync from and target paths are required");
+}
+
 

@@ -11,7 +11,7 @@ function spawn(prog, args, options) {
 
     if (!options)
         options = {
-        }
+        };
 
     var p = new Promise(function (resolve, reject) {
 
@@ -26,17 +26,21 @@ function spawn(prog, args, options) {
             stderrBuffer += data;
         });
 
-        child.stdout.on('data', function (data) {
-            stderrBuffer += data;
-        });
+        //child.stdout.on('data', function (data) {
+        //    stderrBuffer += data;
+        //});
 
         var stdout =  child.stdout;
+        var stderr =  child.stderr;
         if (options.pipe)
             stdout = stdout.pipe(options.pipe);
+        if (options.pipeErr)
+            stderr = stderr.pipe(options.pipeErr);
 
         resolve({
             child: child,
             stdout: stdout,
+            stderr: stderr,
             done: new Promise(function(resolve, reject){
                 child.on('close', function (exitcode) {
                     if (child.err)

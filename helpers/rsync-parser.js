@@ -52,7 +52,7 @@
             return min;
         };
 
-        var fileExpr = (/^.f.*:(.*):/im);
+        var fileExpr = (/^(.)f.*:(.*):/im);
         var progressExpr = (/^(.*?)((\d{1,3})%)\s*(.*\/s)\s*(\d*:\d*:\d*)/im);
 
         emitToken = function (token) {
@@ -63,9 +63,10 @@
             stream.emit("line", token);
 
             if ((m = fileExpr.exec(token)) && m.length > 1) {
-                lastFilename = m[1].toString();
+                lastFilename = m[2].toString();
                 return stream.emit("file",
                     {
+                        operation: _decodeOperation(m[1]),
                         filename: lastFilename
                     })
             }
@@ -138,5 +139,13 @@
         return stream;
     };
 
+    function _decodeOperation(value){
+
+        if (value === '>')
+            return "COPY";
+        else
+            return "OVER";
+
+    }
 
 }).call(this);

@@ -14,7 +14,14 @@ myApp.factory("rsync", ['$http', '$q', '$rootScope', 'socket', function ($http, 
 
     me.status = function () {
 
-        return $http.get('/api/status').then(
+        var req = {
+            method: 'GET',
+            url: '/api/status',
+            headers: {
+
+            }
+        };
+        return $http(req).then(
             function (response) {
                 if (!response.data)
                     throw new Error("Api call error! Null object!");

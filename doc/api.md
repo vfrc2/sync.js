@@ -4,15 +4,16 @@ App with web interface to sync files to another computer with external hdd
 
 - [Rsync](#rsync)
 	- [Get rsync status](#get-rsync-status)
-	- [Get ext hdd info](#get-ext-hdd-info)
 	- [Start rsync](#start-rsync)
 	- [Stop running rsync](#stop-running-rsync)
+	
+- [Sysinfo](#sysinfo)
+	- [Get ext hdd info](#get-ext-hdd-info)
 	
 - [Websocket_Rsync](#websocket_rsync)
 	- [Event copy progress](#event-copy-progress)
 	- [Event new output line](#event-new-output-line)
-	- [Event start](#event-start)
-	- [Event stop](#event-stop)
+	- [Event on change rsync process state](#event-on-change-rsync-process-state)
 	
 
 
@@ -40,40 +41,6 @@ HTTP/1.1 200 OK
      ...
     ]
 }
-```
-### Error Response
-
-Error-Response:
-
-```
-HTTP/1.1 500 Internal Server Error
-{
-  "error": "message"
-}
-```
-## Get ext hdd info
-
-<p>Get drives mounted to /media and stat info about each</p>
-
-	GET /sysinfo
-
-
-### Success Response
-
-HTTP-1/1 200:
-
-```
-[
- {
-     "dev":"/dev/sdc1",
-     "mount":"/media/vfrc2/Transcend",
-     "used":19655368704,
-     "available":12456087552,
-     "size":32111456256,
-     "model":"Transcend 32GB",
-     "ignoreList":[]
- }
-]
 ```
 ### Error Response
 
@@ -126,6 +93,42 @@ HTTP/1.1 500 Internal Server Error
   "error": "message"
 }
 ```
+# Sysinfo
+
+## Get ext hdd info
+
+<p>Get drives mounted to /media and stat info about each</p>
+
+	GET /sysinfo
+
+
+### Success Response
+
+HTTP-1/1 200:
+
+```
+[
+ {
+     "dev":"/dev/sdc1",
+     "mount":"/media/vfrc2/Transcend",
+     "used":19655368704,
+     "available":12456087552,
+     "size":32111456256,
+     "model":"Transcend 32GB",
+     "ignoreList":[]
+ }
+]
+```
+### Error Response
+
+Error-Response:
+
+```
+HTTP/1.1 500 Internal Server Error
+{
+  "error": "message"
+}
+```
 # Websocket_Rsync
 
 ## Event copy progress
@@ -155,18 +158,21 @@ websocket data: {json}
 	WEBSOCKET rsync.rawoutput
 
 
-## Event start
+## Event on change rsync process state
 
-<p>Fire when rsync starts</p>
+<p>Fire when rsync starts or stops and when change state</p>
 
-	WEBSOCKET rsync.start
-
-
-## Event stop
-
-<p>Fire when rsync finished or killed</p>
-
-	WEBSOCKET rsync.stop
+	WEBSOCKET rsync.state
 
 
+### Success Response
+
+{
+
+```
+{
+     title: "Rsync start"
+     type: "start"
+}
+```
 

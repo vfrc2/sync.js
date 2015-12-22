@@ -8,9 +8,10 @@ var events = require('events');
 
 var RsyncError = require('./../helpers/RsyncError');
 var Rsync = require('./rsync');
-var sr = require('./../helpers/scriptRunner');
+var sr = require('./../helpers/script-runner');
 var log = require('./../helpers/logger')(module);
 
+var MOUNT_PATH = '/mnt';
 
 function CreateBlockInfo(config) {
 
@@ -40,7 +41,7 @@ function getDevInfo() {
 
     log.debug("Start 'mount | grep /media'");
     var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
-        [],
+        [MOUNT_PATH],
         {
             pipe: require("stream-splitter")('\n')
         });
@@ -54,10 +55,7 @@ function getDevInfo() {
         var overalWarning = [];
 
         process.stdout.on("token", function (token) {
-
-
             try {
-
                 log.debug("Get dev string '%s'", token);
                 var tkn = token.split(" ", 2);
 
@@ -74,13 +72,7 @@ function getDevInfo() {
                     Promise.all(
                         [
                             getDfinfo(dev),
-                            getUdev(dev),
-                            getRsyncDryrunFile(dev)
-                                .catch(function (err) {
-                                    deviceWarning.push("Error geting ignore file list " +
-                                        err.message);
-                                    return [];
-                                })
+                            getUdev(dev)
                         ])
                         .then(function (result) {
                             _fillDev(dev, result);
@@ -190,13 +182,17 @@ function getUdev(dev) {
             try {
                 var atr = _parseUdevAtr(token);
 
-                if (atr != null) {
+                if (atr != null && !data.some(checkExists, atr)) {
                     data.push(atr);
                 }
             } catch (err) {
                 errs.push(err)
             }
         });
+
+        function checkExists(cur, index, array){
+            return this.name === cur.name;
+        }
 
         return result.done.then(function () {
 
@@ -207,54 +203,6 @@ function getUdev(dev) {
         })
 
     });
-}
-
-function getRsyncDryrunFile(dev) {
-    try {
-        var rsync = new Rsync();
-
-        var ignoreList = [];
-
-        rsync.on('file', function (data) {
-
-            ignoreList.push(data);
-            //pushToTree(data.filename, data);
-        });
-
-        var args = {
-            path: dev.mount,
-            extraArgs: ["-n"]
-        };
-
-        rsync.setConfig(getDevInfo._rsyncConfig);
-
-        log.debug("Start 'rsync dryrun'");
-        log.debug("rsync args: %s", args);
-
-        function delay(time){
-            return new Promise(function (resolve){
-               setTimeout(resolve, time);
-            });
-        }
-
-
-
-        return delay(5000)
-            .then(function(){
-                return rsync.start(args);
-            })
-            .then(function (res) {
-                return res.done;
-            })
-            .then(function (res) {
-                log.debug("rsync ignore files count: %s", ignoreList.length);
-                return {name: 'ignoreList', value: ignoreList};
-            });
-    } catch (err) {
-        log.error("Rsync dry run error: %s", err.message);
-        log.debug("Rsync dry run stack", err.stack);
-        return Promise.reject(err);
-    }
 }
 
 function _parseDfBuffer(buffer) {
@@ -288,10 +236,12 @@ function _parseUdevAtr(token) {
         value: tkn[1].replace(/\"/g, "").trim()
     };
 
-    if (token.name == "ATTRS{model}")
+    if (token.name === "ATTRS{model}")
         return {name: "model", value: token.value};
-    else if (token.name == "ATTR{vendor}")
+    else if (token.name === "ATTR{vendor}")
         return {name: "vendor", value: token.value};
+    else if (token.name === "ATTRS{serial}" )
+        return {name: "serial", value: token.value};
     else
         return null;
 }

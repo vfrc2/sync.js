@@ -9,6 +9,25 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
         "use strict";
 
         start();
+        $scope.viewLoading = true;
+
+        rsync.status()
+            .then(function (status) {
+
+                if (status.isRunning) {
+                    $location.path('/status');
+                    throw new Error("Rsync already running!");
+                }
+
+                return sysinfo.get();
+            })
+            .then(function (results) {
+                initView(results);
+            })
+            .catch(proccedError)
+            .finally(function () {
+                $scope.viewLoading = false;
+            });
 
         $scope.run = function (device) {
 
@@ -21,12 +40,13 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                 extraArgs.push(device.extraArgs);
             }
 
-            device.ignoreList.forEach(checkItem);
+            var files = getLeafs(device.ignoreFiles);
+            files.forEach(checkItem);
 
             function checkItem(item) {
 
                 if (item.checked == true)
-                    extraArgs.push("--exclude '" + item.name + "'");
+                    extraArgs.push("--exclude=" + item.fileItem.filename);
 
                 if (item.childs && item.childs.length > 0)
                     item.childs.forEach(checkItem);
@@ -45,15 +65,15 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
         };
 
         $scope.selectChange = function (data) {
-            if (data.child != undefined)
-                data.child.forEach(function (ch) {
+            if (data.childs != undefined)
+                data.childs.forEach(function (ch) {
                     ch.checked = data.checked;
                     $scope.selectChange(ch);
                 })
         };
 
         $scope.selectAll = function (value) {
-            $scope.selectedDevice.ignoreList.forEach(function (item) {
+            $scope.selectedDevice.ignoreFiles.forEach(function (item) {
                 item.checked = value;
                 $scope.selectChange(item);
             })
@@ -97,6 +117,8 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                     toastr.warning(war);
                 });
 
+            if (!$scope.devices.forEach)
+                throw new Error("Bad devices!");
 
             $scope.devices.forEach(function (dev) {
                 dev.dryRun = false;
@@ -105,21 +127,11 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
                 var ignoreFiles = [];
 
-                if (dev.ignoreList != undefined) {
+                if (dev.ignoreFiles != undefined) {
 
-                    dev.ignoreList.forEach(function (item) {
-                        var newItem = {
-                            checked: false,
-                            name: item.filename,
-                            //childs: []
-                        }
-
-                        ignoreFiles.push(newItem);
-                    });
-                }
-
-                dev.ignoreList = ignoreFiles;
-
+                    dev.ignoreFiles = getTree(dev.ignoreFiles);
+                } else
+                    dev.ignoreFiles = [];
             });
 
             $scope.selectedDevice = $scope.devices[0];
@@ -138,5 +150,74 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
             rsync.removeAllListeners();
             sysinfo.removeAllListeners();
         });
+
+        function getTree(files) {
+
+            var root = {childs: []};
+
+            if (files.forEach) {
+                files.forEach(function (file) {
+
+                    var path = file.filename.split('/');
+
+                    var curRoot = root;
+
+                    for (var i in path) {
+                        if (i == path.length - 1) {
+                            curRoot.childs.push({
+                                name: path[i],
+                                fileItem: file
+                            });
+                            break;
+                        }
+
+                        var nextRoot = find(curRoot, path[i]);
+
+                        if (!nextRoot) {
+                            nextRoot = {name: path[i], childs: []};
+                            curRoot.childs.push(nextRoot);
+                        }
+                        curRoot = nextRoot;
+                    }
+
+                    function find(root, item) {
+
+                        for (var i in root.childs)
+                            if (root.childs[i].name == item)
+                                return root.childs[i];
+
+                        return undefined;
+                    }
+
+                });
+            }
+
+            return root.childs;
+
+        }
+
+        function getLeafs(tree) {
+
+            if (!tree.childs) {
+                if (tree.forEach) {
+                    var leafs = [];
+                    tree.forEach(function (item) {
+                        leafs = leafs.concat(getLeafs(item));
+                    });
+                    return leafs;
+                }
+                else
+                    return tree;
+            }
+
+            var leafs = [];
+
+            tree.childs.forEach(function (item) {
+                leafs = leafs.concat(getLeafs(item));
+            });
+
+            return leafs;
+
+        }
 
     }]);

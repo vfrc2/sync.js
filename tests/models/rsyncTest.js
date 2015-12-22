@@ -13,8 +13,8 @@ describe('Running rsync with cat of real', function () {
     var expect = chai.expect;
 
     var Rsync = require("./../../models/rsync");
-    var sr = require("./../../helpers/scriptRunner");
-    var rp = require("./../../helpers/rsyncParser");
+    var sr = require("./../../helpers/script-runner");
+    var rp = require("./../../helpers/rsync-parser");
 
 
     it('shouldrun', function (done) {
