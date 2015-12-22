@@ -9,6 +9,9 @@ function CreateRsyncController(app) {
     var bodyParser = require('body-parser');
 
     var Rsync = require('./../models/rsync');
+
+    Rsync.setRsyncCommand(app.appconfig.rsync.command || 'rsync');
+
     var RsyncError = require('./../helpers/rsync-error');
 
     var router = express.Router();
@@ -16,7 +19,17 @@ function CreateRsyncController(app) {
     var io = app.appsocket;
 
     var rsync = new Rsync();
+
+    rsync.from = app.appconfig.rsync.from || undefined;
+    rsync.target = app.appconfig.rsync.target || undefined;
+    rsync.defaultArgs = app.appconfig.rsync.defaultArgs || ['-v'];
+
     var rsyncCache = require('./../models/ignore-file-cache');
+
+    rsyncCache.cacheFile = app.appconfig.cacheFile || '/tmp/.syncjs_cache';
+    rsyncCache.cacheTimeout = app.appconfig.cacheTimeout || 60 * 60 * 1000; //1hour
+    rsyncCache.cacheHddFilename = app.appconfig.rsync.ignoreFile || '.syncjsignore';
+    rsyncCache.rsyncTarget = rsync.target;
 
     router.use(bodyParser.json());
 

@@ -5,43 +5,39 @@
 var Promise = require('promise');
 var fs = require('fs');
 var events = require('events');
+var util = require('util');
 
-var RsyncError = require('./../helpers/RsyncError');
+var RsyncError = require('./../helpers/rsync-error');
 var Rsync = require('./rsync');
 var sr = require('./../helpers/script-runner');
 var log = require('./../helpers/logger')(module);
 
-var MOUNT_PATH = '/mnt';
+var MOUNT_PATH = undefined;
 
-function CreateBlockInfo(config) {
+function CreateBlockInfo() {
 
-    var system_conf = config || {
-            mountPath: "/media/vfrc2"
-        };
+    var me = this;
 
-    var eventEmiter = new events.EventEmitter();
-
-    this.getDevInfo = getDevInfo;
-
-    this.on = function(event, callback){
-        eventEmiter.on(event, callback);
+    this.getDevInfo = function () {
+        return getDevInfo(MOUNT_PATH);
     };
 
-    log.debug("Set watcher for dir " + system_conf.mountPath);
-    var watcher = fs.watch(system_conf.mountPath, function(event, filename){
-        log.debug("Dir " + system_conf.mountPath +"  trigered!" + event);
+    log.debug("Set watcher for dir " + MOUNT_PATH);
+    var watcher = fs.watch(MOUNT_PATH, function (event, filename) {
+        log.debug("Dir " + MOUNT_PATH + "  trigered!" + event);
         //if (event === 'change')
-            eventEmiter.emit('device.connected', filename);
+        me.emit('device.connected', filename);
     });
 
 }
 
+util.inherits(CreateBlockInfo, events.EventEmitter);
 
-function getDevInfo() {
+function getDevInfo(mountPath) {
 
-    log.debug("Start 'mount | grep /media'");
+    log.debug("Start 'mount | grep " + mountPath + "'");
     var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
-        [MOUNT_PATH],
+        [mountPath],
         {
             pipe: require("stream-splitter")('\n')
         });
@@ -190,7 +186,7 @@ function getUdev(dev) {
             }
         });
 
-        function checkExists(cur, index, array){
+        function checkExists(cur, index, array) {
             return this.name === cur.name;
         }
 
@@ -240,7 +236,7 @@ function _parseUdevAtr(token) {
         return {name: "model", value: token.value};
     else if (token.name === "ATTR{vendor}")
         return {name: "vendor", value: token.value};
-    else if (token.name === "ATTRS{serial}" )
+    else if (token.name === "ATTRS{serial}")
         return {name: "serial", value: token.value};
     else
         return null;
@@ -260,17 +256,8 @@ function _fillDev(dev, atrs) {
 
 }
 
-function getMountWatcher(){
+CreateBlockInfo.setMountPath = function (path) {
+    MOUNT_PATH = path;
+};
 
-    if (system_conf.mountPath && fs.existsSync(system_conf.mountPath))
-        return fs.watch(system_conf.mountPath);
-
-}
-
-getDevInfo._rsyncConfig = {}
-
-getDevInfo.setRsyncConfig = function (config) {
-    getDevInfo._rsyncConfig = config;
-}
-
-module.exports = new CreateBlockInfo();
+module.exports = CreateBlockInfo;

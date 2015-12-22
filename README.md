@@ -15,3 +15,9 @@ Deb layout:
     /var/cache/syncjs       - cache for devices and so
     /var/run/syncjsd.pid    - pid file for daemon
     /etc/syncjs/config.json - main config file
+    
+VARS:  
+   SYNCJS_PID
+   SYNCJS_RSYNC_COMMAND
+   SYNCJS_MOUNT_PATH
+   SYNCJS_CACHE_FILE

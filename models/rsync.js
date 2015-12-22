@@ -29,9 +29,15 @@ function CreateRsync() {
 
     var outputBuffer = [];
 
+    //options
+
     this.from = undefined;
     this.target = undefined;
     this.defaultArgs = [];
+
+
+
+    //actions
 
     this.start = function start(path, extraArgs) {
 
@@ -86,7 +92,6 @@ function CreateRsync() {
             });
     };
 
-
     this.getRemoteFiles = function (extraArgs, fileHandler) {
 
         var me = this;
@@ -135,7 +140,7 @@ function CreateRsync() {
             return outputBuffer;
 
         throw new RsyncError("rsync not running!");
-    }
+    };
 
     this.isRunning = function () {
         "use strict";
@@ -183,7 +188,7 @@ function CreateRsync() {
                         if (value)
                             log.debug("Resolve arg: " + value);
                         else
-                            log.warn("Can't resiolve arg");
+                            log.warn("Can't resolve arg");
                         return value;
                     }));
                 });
@@ -208,7 +213,7 @@ function CreateRsync() {
                 resolve(Promise.resolve(args))
         })
 
-    }
+    };
 
     this._pushArgs = function _pushArgs(extraArgs) {
 
@@ -227,7 +232,7 @@ function CreateRsync() {
             return cmdArgs;
         }
 
-    }
+    };
 
     this._pushSystemArgs = function _pushSystemArgs() {
 
@@ -245,7 +250,7 @@ function CreateRsync() {
 
             return cmdArgs;
         }
-    }
+    };
 
     this._wireEmitters = function _wireEmitters() {
         var me = this;
@@ -292,14 +297,13 @@ function CreateRsync() {
                         me.emit('state', {title: "Rsync finished", type: 'stop'});
                         return exitcode;
                     }).catch(function (err) {
-                        log.warn("Rsync finished with err" + err);
                         me.emit('state', {title: "Rsync exited with error " + err.message, type: 'crash'});
                         throw(new RsyncError("rsync run error " + err.message));
                     })
             };
 
         }
-    }
+    };
 
     this._returnFileList =  function _returnFileList() {
         var me = this;
@@ -334,5 +338,9 @@ function CreateRsync() {
 }
 
 util.inherits(CreateRsync, events.EventEmitter);
+
+CreateRsync.setRsyncCommand = function(cmd){
+    RSYNC_COMMAND = cmd;
+};
 
 module.exports = CreateRsync;

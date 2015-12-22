@@ -7,6 +7,8 @@
     //www: false, //- enable or disable www client
   },
 
+  "cacheFile":".cache",
+
   "rsync": {
 
     //local storage use end / carefull!

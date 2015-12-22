@@ -5,7 +5,7 @@
 myApp.factory("sysinfo", ['$http', 'socket', '$q', function ($http, socket, $q) {
     "use strict";
 
-    this.get = function () {
+    this.getSysInfo = function () {
 
 
         return $http.get(

@@ -1,9 +1,12 @@
 var logger = require('./helpers/logger');
 var log = require('./helpers/logger')(module);
 
-var yargs =  require('yargs');
+var yargs = require('yargs');
+var fs = require('fs');
+var process = require('process');
 
 try {
+
 
     var express = require('express');
 
@@ -16,6 +19,11 @@ try {
     log.debug("Setting config", config);
     app.appconfig = config;
 
+    var PID = config.pid || '/var/run/syncjs.pid';
+
+    checkPid(PID);
+
+
     log.debug("Starting server...");
     var server = app.listen(config.webserver.port, function (err) {
         "use strict";
@@ -25,12 +33,23 @@ try {
             process.exit(1);
         }
 
+        var url = "http://"+ server.address().address + (server.address().port||'');
+
+        var data = "" + process.pid + "\n" +
+            url + config.webserver.apiroute;
+
+        fs.writeFileSync(PID, data , 'utf8');
+
+        process.on('exit', function () {
+            rmPid(PID);
+        });
+
         log.info("Server start at http://%s:%s", server.address().address, server.address().port);
     });
 
     app.appsocket = require("socket.io")(server);
 
-    app.use(function(req, res, next){
+    app.use(function (req, res, next) {
         req.appconfig = config;
         next();
     });
@@ -40,6 +59,8 @@ try {
 
     app.use(errorLog);
     app.use(errorHandler);
+
+
 
 } catch (err) {
 
@@ -55,13 +76,13 @@ function errorLog(err, req, res, next) {
     "use strict";
     log.error(err);
     next(err);
-};
+}
 
 function errorHandler(err, req, res, next) {
     "use strict";
     res.status(500);
     res.end("Internal server error");
-};
+}
 
 
 function ConfigError(message) {
@@ -169,12 +190,28 @@ function getConfig() {
     }
     finally {
         JSON = internalJSON;
+
     }
 }
 
 function checkConfig(args) {
     if (!args.rsync.from || !args.rsync.target)
         throw new ConfigError("Rsync from and target paths are required");
+}
+
+function checkPid(pid) {
+
+    if (fs.existsSync(PID)) {
+        throw new Error("Server already started");
+    }
+}
+
+function rmPid(pid) {
+    try {
+        fs.unlinkSync(pid);
+    } catch (err) {
+        log.warn(err);
+    }
 }
 
 

@@ -10,21 +10,22 @@ var Rsync = require('./../models/rsync');
 
 function CreateIgnoreFileCache() {
 
-    this.localCacheName = '/tmp/syncjs-remote';
-    this.cacheTimeout = 5 * 60 * 1000; //ms ~5 min
-    this.rsyncConfig = {};
+    this.cacheFile = '/tmp/syncjs-remote';
+    this.cacheTimeout = 5 * 60 * 60 * 1000; //ms ~5 hours
+    this.cacheHddFilename = '.syncjsignore';
+    this.rsyncTarget = undefined;
 
     this.getCachedFile = function (devicePath, forceUpdate) {
 
         // check local cache if not, load from remote if not when check hdd file cache
         var deviceFile = null;
         if (devicePath)
-            deviceFile = path.join(devicePath, ".syncjsignore");
+            deviceFile = path.join(devicePath, cacheHddFilename);
 
         var me = this;
 
-        log.debug("Check cache in " + this.localCacheName);
-        return checkFile(this.localCacheName, this.cacheTimeout)
+        log.debug("Check cache in " + this.cacheFile);
+        return checkFile(this.cacheFile, this.cacheTimeout)
             .then(function (result) {
                 if (result || forceUpdate) {
                     log.debug("Cache is fresh");
@@ -32,30 +33,29 @@ function CreateIgnoreFileCache() {
                 }
 
                 log.debug("Cache is not fresh, geting from remote");
-                return getRemoteFileList(me.localCacheName, me.rsyncConfig)
+                return getRemoteFileList(me.cacheFile, me.rsyncTarget)
                     .then(copyToHdd)
                     .catch(function (err) {
-                        log.warn("Error while geting remote file list", err);
                         if (fs.existsSync(deviceFile)) {
                             log.debug("Return hdd cache");
                             return deviceFile;
                         }
                         else {
-                            log.debug("Error where is no cache file");
-                            return undefined;
+                            log.warn("No hdd file");
+                            return Promise.reject(err);
                         }
                     });
 
                 function copyToHdd() {
                     if (deviceFile) {
                         log.debug("updating hdd " + deviceFile);
-                        return copy(me.localCacheName, deviceFile)
+                        return copy(me.cacheFile, deviceFile)
                             .then(function (res) {
-                                return me.localCacheName;
+                                return me.cacheFile;
                             });
                     }
                     else
-                        return Promise.resolve(me.localCacheName);
+                        return Promise.resolve(me.cacheFile);
                 }
             });
     };
@@ -77,16 +77,16 @@ function checkFile(filename, timeout) {
         var now = new Date();
         var mtime = result['mtime'];
 
-        return now - mtime < timeout;
+        return result.size > 0 && now - mtime < timeout;
     });
 }
 
-function getRemoteFileList(filename, config) {
+function getRemoteFileList(filename, rsyncTarget) {
 
     log.debug("Get remote file list in " + filename);
     var rsync = new Rsync();
 
-    rsync.target = config.target;
+    rsync.target = rsyncTarget;
 
     var ws = getNewWS(filename);
 

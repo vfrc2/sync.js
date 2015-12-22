@@ -1,3 +1,3 @@
 #!/bin/bash
 
-mount | grep "/media" | awk  '{ print $1,$3 }'
+mount | grep "$1" | awk  '{ print $1,$3 }'

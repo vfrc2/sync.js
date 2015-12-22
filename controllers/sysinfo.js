@@ -10,12 +10,15 @@ var express = require('express');
 
 var Rsync = require('./../models/rsync');
 var RsyncError = require('./../helpers/rsync-error');
-
+var BlockInfo = require('./../models/block-info');
 
 function CreateSysinfo(app) {
 
     var bodyParser = require('body-parser');
-    var blockInfo = require('./../models/block-info');
+
+    BlockInfo.setMountPath(app.appconfig.mountpath || '/media');
+
+    var blockInfo = new BlockInfo();
 
     var router = express.Router();
 
@@ -78,6 +81,11 @@ function CreateSysinfo(app) {
             });
     });
 
+    blockInfo.on('device.connected', function(result){
+        app.appsocket.emit('blockdev.newdevice', result);
+    });
+
+
     function _dryRunDevices(req) {
 
         var me = this;
@@ -95,14 +103,14 @@ function CreateSysinfo(app) {
 
             var ignoreFile = req.rsyncCache.getCachedFile(null, forceUpdate)
                 .then(function (ignoreFilename) {
-                    return "--exclude-from=" + ignoreFilename;
+                        return "--exclude-from=" + ignoreFilename;
                 }).catch(function (err) {
                     log.warn("Error geting ignore cache ", err);
 
-                    if (!deviceResult.warnings.push)
-                        deviceResult.warnings = [];
+                    if (!deviceResult.warning || !deviceResult.warning.push)
+                        deviceResult.warning = [];
 
-                    deviceResult.warnings.push(err.message);
+                    deviceResult.warning.push(err.message);
                     return undefined;
                 });
 

@@ -9,25 +9,6 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
         "use strict";
 
         start();
-        $scope.viewLoading = true;
-
-        rsync.status()
-            .then(function (status) {
-
-                if (status.isRunning) {
-                    $location.path('/status');
-                    throw new Error("Rsync already running!");
-                }
-
-                return sysinfo.get();
-            })
-            .then(function (results) {
-                initView(results);
-            })
-            .catch(proccedError)
-            .finally(function () {
-                $scope.viewLoading = false;
-            });
 
         $scope.run = function (device) {
 
@@ -77,7 +58,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                 item.checked = value;
                 $scope.selectChange(item);
             })
-        }
+        };
 
         function proccedError(err) {
             $scope.canRun = false;
@@ -96,7 +77,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                         throw new Error("Rsync already running!");
                     }
 
-                    return sysinfo.get();
+                    return sysinfo.getSysInfo();
                 })
                 .then(function (results) {
                     initView(results);
