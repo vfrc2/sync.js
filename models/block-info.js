@@ -24,9 +24,13 @@ function CreateBlockInfo() {
 
     log.debug("Set watcher for dir " + MOUNT_PATH);
     var watcher = fs.watch(MOUNT_PATH, function (event, filename) {
-        log.debug("Dir " + MOUNT_PATH + "  trigered!" + event);
+        log.debug("Dir " + MOUNT_PATH + "  trigered: " + event);
         //if (event === 'change')
-        me.emit('device.connected', filename);
+        //needed because when inotify fire event, system no yet mount drive
+        setTimeout(function(){
+            me.emit('device.connected', filename);
+        }, 1000);
+
     });
 
 }

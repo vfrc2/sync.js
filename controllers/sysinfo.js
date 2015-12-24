@@ -16,7 +16,7 @@ function CreateSysinfo(app) {
 
     var bodyParser = require('body-parser');
 
-    BlockInfo.setMountPath(app.appconfig.mountpath || '/media');
+    BlockInfo.setMountPath(app.appconfig.mountPath || '/media');
 
     var blockInfo = new BlockInfo();
 

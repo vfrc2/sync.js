@@ -122,6 +122,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
         sysinfo.on('newdevice', function(){
             toastr.info("New device!");
+            start();
         });
 
         $scope.$on('$destroy', function (event) {

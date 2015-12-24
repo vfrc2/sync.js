@@ -10,13 +10,19 @@ var Rsync = require('./../models/rsync');
 
 function CreateIgnoreFileCache() {
 
+    var me = this;
+
     this.cacheFile = '/tmp/syncjs-remote';
     this.cacheTimeout = 5 * 60 * 60 * 1000; //ms ~5 hours
     this.cacheHddFilename = '.syncjsignore';
     this.rsyncTarget = undefined;
 
+    this.cacheFilePromise = undefined;
+
     this.getCachedFile = function (devicePath, forceUpdate) {
 
+        if (this.cacheFilePromise)
+            return this.cacheFilePromise;
         // check local cache if not, load from remote if not when check hdd file cache
         var deviceFile = null;
         if (devicePath)
@@ -25,7 +31,7 @@ function CreateIgnoreFileCache() {
         var me = this;
 
         log.debug("Check cache in " + this.cacheFile);
-        return checkFile(this.cacheFile, this.cacheTimeout)
+        return this.cacheFilePromise = checkFile(this.cacheFile, this.cacheTimeout)
             .then(function (result) {
                 if (result || forceUpdate) {
                     log.debug("Cache is fresh");
@@ -57,9 +63,10 @@ function CreateIgnoreFileCache() {
                     else
                         return Promise.resolve(me.cacheFile);
                 }
+            }).finally(function(){
+                me.cacheFilePromise = undefined;
             });
     };
-
     return this;
 }
 

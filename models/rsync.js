@@ -257,7 +257,7 @@ function CreateRsync() {
 
         return function (process) {
 
-            log.debug("Write events");
+            log.debug("Wire events");
 
             child = process;
 

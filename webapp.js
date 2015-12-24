@@ -40,12 +40,11 @@ try {
 
         fs.writeFileSync(PID, data , 'utf8');
 
-        process.on('exit', function () {
-            rmPid(PID);
-        });
+        wireExit();
 
         log.info("Server start at http://%s:%s", server.address().address, server.address().port);
     });
+
 
     app.appsocket = require("socket.io")(server);
 
@@ -177,8 +176,8 @@ function getConfig() {
         if (!args.public)
             args.public = './public';
 
-        if (!args.mountpath)
-            args.mountpath = '/media';
+        if (!args.mountPath)
+            args.mountPath = '/media';
 
         if (args.verbose)
             logger.setGlobalLevel('debug');
@@ -208,10 +207,29 @@ function checkPid(pid) {
 
 function rmPid(pid) {
     try {
+        log.info("Remove pid " + PID);
         fs.unlinkSync(pid);
     } catch (err) {
         log.warn(err);
     }
+}
+
+function wireExit(){
+    function exitHandler(options, err) {
+
+        if (options.cleanup) rmPid(PID);
+        if (err) console.log(err.stack);
+        if (options.exit) process.exit();
+    }
+
+//do something when app is closing
+    process.on('exit', exitHandler.bind(null,{cleanup:true}));
+
+//catches ctrl+c event
+    process.on('SIGINT', exitHandler.bind(null, {exit:true}));
+
+//catches uncaught exceptions
+    process.on('uncaughtException', exitHandler.bind(null, {exit:true}));
 }
 
 
