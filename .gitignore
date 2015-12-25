@@ -6,4 +6,4 @@
 /.idea
 *.log
 tests/_share
-pid
+.syncjs*

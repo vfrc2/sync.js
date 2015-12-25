@@ -13,8 +13,7 @@ function createLogger(child_module, tag) {
 
     var filename = child_module?child_module.filename: module.parent.filename;
 
-    var name = path.relative(basepath,
-        path.basename(filename, ".js"))
+    var name =  path.relative(basepath,filename)
         .split('/').join('.');
     if (tag)
         name += "." + tag;

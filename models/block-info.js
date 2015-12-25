@@ -13,20 +13,21 @@ var Rsync = require('./rsync');
 var sr = require('./../helpers/script-runner');
 var log = require('./../helpers/logger')(module);
 
-var MOUNT_PATH = undefined;
-var DEV_SETTINGS_FILE = '.syncjssettings';
 
-function CreateBlockInfo() {
+function CreateBlockInfo(mountPath) {
 
     var me = this;
 
+    this.mountPath = mountPath;
+    this.settingsFilename = undefined;
+
     this.getDevInfo = function () {
-        return getDevInfo(MOUNT_PATH);
+        return getDevInfo(this.mountPath);
     };
 
-    log.debug("Set watcher for dir " + MOUNT_PATH);
-    var watcher = fs.watch(MOUNT_PATH, function (event, filename) {
-        log.debug("Dir " + MOUNT_PATH + "  trigered: " + event);
+    log.debug("Set watcher for dir " + this.mountPath);
+    var watcher = fs.watch(this.mountPath, function (event, filename) {
+        log.debug("Dir " + me.mountPath + "  trigered: " + event);
         //if (event === 'change')
         //needed because when inotify fire event, system no yet mount drive
         setTimeout(function () {
@@ -35,99 +36,98 @@ function CreateBlockInfo() {
 
     });
 
+    function getDevInfo() {
+
+        log.debug("Start 'mount | grep " + me.mountPath + "'");
+        var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
+            [me.mountPath],
+            {
+                pipe: require("stream-splitter")('\n')
+            });
+
+        return bi.then(function (process) {
+
+            var promises = [];
+
+            process.stdout.encoding = 'utf8';
+
+            var overalWarning = [];
+
+            process.stdout.on("token", function (token) {
+                try {
+                    log.debug("Get dev string '%s'", token);
+                    var tkn = token.split(" ", 2);
+
+                    var dev = {
+                        dev: tkn[0],
+                        mount: tkn[1]
+                    };
+
+                    log.debug("Parse dev: %s", dev);
+
+                    var deviceWarning = [];
+
+                    promises.push(
+                        Promise.all(
+                            [
+                                getDfinfo(dev),
+                                getUdev(dev),
+                                getPerDeviceSettings(dev, me.settingsFilename)
+                                    .catch(function (err) {
+                                        deviceWarning.push("Err while parse per dev config: " + err.message);
+                                        return {};
+                                    })
+                            ])
+                            .then(function (result) {
+                                _fillDev(dev, result);
+
+                                dev.warning = [];
+
+                                if (deviceWarning.length)
+                                    dev.warning = deviceWarning;
+
+                                return dev;
+                            })
+                            .catch(function (err) {
+                                log.error("Dev '%s'  get info error", dev.dev, err.message);
+                                log.debug("Dev: ", dev.dev, err.stack);
+
+                                overalWarning.push("Error while parse dev " + dev.dev +
+                                    " " + err.message);
+
+                                return undefined;
+                            })
+                    );
+                } catch (err) {
+                    log.error("Devinfo error", err.message);
+                    log.debug("Devinfo stack", err.stack);
+                    overalWarning.push("Error while parse devices! " +
+                        " " + err.message);
+                }
+            });
+
+            return process.done.then(function () {
+                return Promise.all(promises).then(function (devices) {
+
+                    if (!(devices && devices.length > 0)) {
+                        overalWarning.push("No devices!");
+                    }
+                    return {
+                        warning: overalWarning,
+                        devices: devices
+                    };
+                });
+            });
+
+        });
+
+    }
+
 }
 
 util.inherits(CreateBlockInfo, events.EventEmitter);
 
-function getDevInfo(mountPath) {
 
-    log.debug("Start 'mount | grep " + mountPath + "'");
-    var bi = sr.spawn(__dirname + "/scripts/blockinfo.sh",
-        [mountPath],
-        {
-            pipe: require("stream-splitter")('\n')
-        });
-
-    return bi.then(function (process) {
-
-        var promises = [];
-
-        process.stdout.encoding = 'utf8';
-
-        var overalWarning = [];
-
-        process.stdout.on("token", function (token) {
-            try {
-                log.debug("Get dev string '%s'", token);
-                var tkn = token.split(" ", 2);
-
-                var dev = {
-                    dev: tkn[0],
-                    mount: tkn[1]
-                };
-
-                log.debug("Parse dev: %s", dev);
-
-                var deviceWarning = [];
-
-                promises.push(
-                    Promise.all(
-                        [
-                            getDfinfo(dev),
-                            getUdev(dev),
-                            getPerDeviceSettings(dev).catch(function (err) {
-                                deviceWarning.push("Err while parse per dev config: " + err.message);
-                                return {};
-                            })
-                        ])
-                        .then(function (result) {
-                            _fillDev(dev, result);
-
-                            dev.warning = [];
-
-                            if (deviceWarning.length)
-                                dev.warning = deviceWarning;
-
-                            return dev;
-                        })
-                        .catch(function (err) {
-                            log.error("Dev '%s'  get info error", dev.dev, err.message);
-                            log.debug("Dev: ", dev.dev, err.stack);
-
-                            overalWarning.push("Error while parse dev " + dev.dev +
-                                " " + err.message);
-
-                            return undefined;
-                        })
-                );
-            } catch (err) {
-                log.error("Devinfo error", err.message);
-                log.debug("Devinfo stack", err.stack);
-                overalWarning.push("Error while parse devices! " +
-                    " " + err.message);
-            }
-        });
-
-        return process.done.then(function () {
-            return Promise.all(promises).then(function (devices) {
-
-                if (!(devices && devices.length > 0)) {
-                    overalWarning.push("No devices!");
-                }
-
-                var response = {
-                    warning: overalWarning,
-                    devices: devices
-                };
-
-                return response;
-
-            });
-        });
-
-    });
-
-}
 
 function getDfinfo(dev) {
 
@@ -215,9 +215,9 @@ function getUdev(dev) {
 
 var readFile = Promise.denodeify(fs.readFile);
 
-function getPerDeviceSettings(dev) {
+function getPerDeviceSettings(dev, settingFilename) {
 
-    var filename = path.join(dev.mount, DEV_SETTINGS_FILE);
+    var filename = path.join(dev.mount, settingFilename);
 
 
     log.debug("Getting per device config " + filename);
@@ -231,7 +231,7 @@ function getPerDeviceSettings(dev) {
         }
 
         return {name: "setting", value: config};
-    }).catch(function(err){
+    }).catch(function (err) {
         if (err.code && err.code === 'ENOENT') {
             log.debug("No per device settings found");
             return {};
@@ -295,9 +295,5 @@ function _fillDev(dev, atrs) {
     });
 
 }
-
-CreateBlockInfo.setMountPath = function (path) {
-    MOUNT_PATH = path;
-};
 
 module.exports = CreateBlockInfo;

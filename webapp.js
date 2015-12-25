@@ -19,13 +19,10 @@ try {
     log.debug("Setting config", config);
     app.appconfig = config;
 
-    var PID = config.pid || '/var/run/syncjs.pid';
-
-    checkPid(PID);
-
+    checkPid(config.pid);
 
     log.debug("Starting server...");
-    var server = app.listen(config.webserver.port, function (err) {
+    var server = app.listen(config.port, config.host, function (err) {
         "use strict";
 
         if (err != null) {
@@ -33,14 +30,14 @@ try {
             process.exit(1);
         }
 
-        var url = "http://"+ server.address().address + (server.address().port||'');
+        var url = "http://" + server.address().address +":"+ (server.address().port || '');
 
         var data = "" + process.pid + "\n" +
-            url + config.webserver.apiroute;
+            url + config.apiRoute;
 
-        fs.writeFileSync(PID, data , 'utf8');
+        fs.writeFileSync(config.pid, data, 'utf8');
 
-        wireExit();
+        wireExit(config.pid);
 
         log.info("Server start at http://%s:%s", server.address().address, server.address().port);
     });
@@ -58,7 +55,6 @@ try {
 
     app.use(errorLog);
     app.use(errorHandler);
-
 
 
 } catch (err) {
@@ -91,7 +87,7 @@ function ConfigError(message) {
 function getConfig() {
 
     /**
-     * Comandline args:
+     * Commandline args:
      *
      * ENV prefix SYNCJS_
      */
@@ -103,60 +99,49 @@ function getConfig() {
 
         var args = yargs
         //Web server options
-            .option('webserver.port', {
-                alias: ['p', 'port'],
+            .option('host', {
+                alias: 'a',
+                group: 'Webserver:',
+                default: '127.0.0.1',
+                nargs: 1,
+                describe: "listen server address"
+
+            })
+            .option('port', {
+                alias: 'p',
                 group: 'Webserver:',
                 default: 3000,
                 nargs: 1,
-                describe: "listen server port",
+                describe: "listen server port"
 
             })
-            .option('webserver.apiroute', {
-                alias: 'apiroute',
+            .option('apiRoute', {
+                alias: 'apiRoute',
                 group: 'Webserver:',
                 default: '/api',
                 nargs: 1,
                 describe: "api route for service"
             })
-            .option('webserver.www', {
+            .option('www', {
                 group: 'Webserver:',
                 default: true,
                 describe: "enable web interface (-no-www to disable www client)"
             })
 
-            //Rsync options
-            .option('rsync.ignorefile', {
-                alias: 'ignorefile',
-                group: 'Rsync:',
-                default: '.syncIgnore',
-                nars: 1,
-                description: "name for ignore file placed on ext hdd"
-            })
-
-            .option('rsync.from', {
-                alias: ['from', 'f'],
+            .option('from', {
+                alias: 'f',
                 group: 'Rsync:',
                 //demand: true,
                 nargs: 1,
-                describe: 'origin of files, loacl path',
+                describe: 'origin of files, loacl path'
             })
 
-            .option('rsync.target', {
-                alias: ['target', 't'],
+            .option('target', {
+                alias: 't',
                 group: 'Rsync:',
                 //demand: true,
                 nargs: 1,
                 describe: 'target of files, can be remote path user@host:path'
-            })
-            .option('rsync.user', {
-                nargs: 1,
-                group: 'Rsync:',
-                describe: 'remote machine user'
-            })
-            .option('rsync.host', {
-                nargs: 1,
-                group: 'Rsync:',
-                describe: 'remote host address'
             })
             //over options options
             .option('v', {
@@ -164,7 +149,7 @@ function getConfig() {
                 description: 'set global log level to debug'
             })
             .env("SYNCJS_")
-            .usage('Usage: $0 [options] [-- rsync.args]')
+            .usage('Usage: $0 [options]')
             .config('c', "Config file")
             .alias('c', 'config')
             .default('c', './config.json')
@@ -178,6 +163,24 @@ function getConfig() {
 
         if (!args.mountPath)
             args.mountPath = '/media';
+
+        if (!args.pid)
+            args.pid = './.syncjspid';
+
+        if (!args.rsyncCommand)
+            args.rsyncCommand = 'rsync';
+
+        if (!args.cacheFile)
+            args.cacheFile = './.syncjscache';
+
+        if (!args.cacheTimeout)
+            args.cacheTimeout = 60*60*1000; //1h
+
+        if (!args.hddCacheFile)
+            args.hddCacheFile = '.syncjscache';
+
+        if (!args.perDeviceSettings)
+            args.perDeviceSettings = '.syncjssettings';
 
         if (args.verbose)
             logger.setGlobalLevel('debug');
@@ -194,42 +197,42 @@ function getConfig() {
 }
 
 function checkConfig(args) {
-    if (!args.rsync.from || !args.rsync.target)
+    if (!args.from || !args.target)
         throw new ConfigError("Rsync from and target paths are required");
 }
 
 function checkPid(pid) {
 
-    if (fs.existsSync(PID)) {
+    if (fs.existsSync(pid)) {
         throw new Error("Server already started");
     }
 }
 
 function rmPid(pid) {
     try {
-        log.info("Remove pid " + PID);
+        log.info("Remove pid " + pid);
         fs.unlinkSync(pid);
     } catch (err) {
         log.warn(err);
     }
 }
 
-function wireExit(){
+function wireExit(pid) {
     function exitHandler(options, err) {
 
-        if (options.cleanup) rmPid(PID);
+        if (options.cleanup) rmPid(pid);
         if (err) console.log(err.stack);
         if (options.exit) process.exit();
     }
 
 //do something when app is closing
-    process.on('exit', exitHandler.bind(null,{cleanup:true}));
+    process.on('exit', exitHandler.bind(null, {cleanup: true}));
 
 //catches ctrl+c event
-    process.on('SIGINT', exitHandler.bind(null, {exit:true}));
+    process.on('SIGINT', exitHandler.bind(null, {exit: true}));
 
 //catches uncaught exceptions
-    process.on('uncaughtException', exitHandler.bind(null, {exit:true}));
+    process.on('uncaughtException', exitHandler.bind(null, {exit: true}));
 }
 
 

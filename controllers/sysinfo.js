@@ -16,16 +16,16 @@ function CreateSysinfo(app) {
 
     var bodyParser = require('body-parser');
 
-    BlockInfo.setMountPath(app.appconfig.mountPath || '/media');
+    var blockInfo = new BlockInfo(app.appconfig.mountPath);
 
-    var blockInfo = new BlockInfo();
+    blockInfo.settingsFilename = app.appconfig.perDeviceSettings;
 
     var router = express.Router();
 
     router.use(bodyParser.json());
 
-    router.use(function(req, res, next){
-        res.setHeader('cache-control','no-cache');
+    router.use(function (req, res, next) {
+        res.setHeader('cache-control', 'no-cache');
         next();
     });
 
@@ -81,9 +81,12 @@ function CreateSysinfo(app) {
             });
     });
 
-    blockInfo.on('device.connected', function(result){
-        app.appsocket.emit('blockdev.newdevice', result);
-    });
+    if (app.appsocket) {
+        log.debug("Bind new device event to socket");
+        blockInfo.on('device.connected', function (result) {
+            app.appsocket.emit('blockdev.newdevice', result);
+        });
+    }
 
 
     function _dryRunDevices(req) {
@@ -103,9 +106,9 @@ function CreateSysinfo(app) {
 
             var ignoreFile = req.rsyncCache.getCachedFile(null, forceUpdate)
                 .then(function (ignoreFilename) {
-                        return "--exclude-from=" + ignoreFilename;
+                    return "--exclude-from=" + ignoreFilename;
                 }).catch(function (err) {
-                    log.warn("Error geting ignore cache ", err);
+                    log.warn("Error getting ignore cache ", err);
 
                     if (!deviceResult.warning || !deviceResult.warning.push)
                         deviceResult.warning = [];
@@ -134,8 +137,8 @@ function CreateSysinfo(app) {
 
         var rsync = new Rsync();
 
-        rsync.from = req.appconfig.rsync.from;
-        rsync.defaultArgs = req.appconfig.rsync.defaultArgs;
+        rsync.from = req.appconfig.from;
+        rsync.defaultArgs = req.appconfig.defaultArgs;
 
         return rsync.getFiles(device.mount, ['-n', ignoreFile])
             .then(function (ignoreFiles) {

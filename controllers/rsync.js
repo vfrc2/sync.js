@@ -10,7 +10,7 @@ function CreateRsyncController(app) {
 
     var Rsync = require('./../models/rsync');
 
-    Rsync.setRsyncCommand(app.appconfig.rsync.command || 'rsync');
+    Rsync.setRsyncCommand(app.appconfig.rsyncCommand);
 
     var RsyncError = require('./../helpers/rsync-error');
 
@@ -20,15 +20,15 @@ function CreateRsyncController(app) {
 
     var rsync = new Rsync();
 
-    rsync.from = app.appconfig.rsync.from || undefined;
-    rsync.target = app.appconfig.rsync.target || undefined;
-    rsync.defaultArgs = app.appconfig.rsync.defaultArgs || ['-v'];
+    rsync.from = app.appconfig.from || undefined;
+    rsync.target = app.appconfig.target || undefined;
+    rsync.defaultArgs = app.appconfig.defaultArgs || [];
 
     var rsyncCache = require('./../models/ignore-file-cache');
 
-    rsyncCache.cacheFile = app.appconfig.cacheFile || '/tmp/.syncjs_cache';
+    rsyncCache.cacheFile = app.appconfig.cacheFile;
     rsyncCache.cacheTimeout = app.appconfig.cacheTimeout || 60 * 60 * 1000; //1hour
-    rsyncCache.cacheHddFilename = app.appconfig.rsync.ignoreFile || '.syncjsignore';
+    rsyncCache.cacheHddFilename = app.appconfig.hddCacheFile;
     rsyncCache.rsyncTarget = rsync.target;
 
     router.use(bodyParser.json());
@@ -39,7 +39,7 @@ function CreateRsyncController(app) {
     });
 
     router.use(function (req, res, next) {
-        rsyncCache.rsyncConfig = req.appconfig.rsync;
+        rsyncCache.rsyncConfig = req.appconfig;
         req.rsyncCache = rsyncCache;
         next();
     });
@@ -113,10 +113,10 @@ function CreateRsyncController(app) {
         var forceUpdate = req.headers['cache-control'] === 'no-cache';
 
         try {
-            if (!(req.appconfig && req.appconfig.rsync))
+            if (!(req.appconfig))
                 next(new RsyncError("No config for rsync!"));
 
-            reqLog.debug("Set rsync config: %s", req.appconfig.rsync);
+            reqLog.debug("Set rsync config: %s", req.appconfig);
 
             reqLog.debug("Start rsync with params: %s", req.body);
 
@@ -128,10 +128,10 @@ function CreateRsyncController(app) {
                 .then(function (ignoreFilename) {
                     return "--exclude-from=" + ignoreFilename;
                 }).catch(function (err) {
-                    log.warn("Error geting ignore cache ", err);
+                    log.warn("Error getting ignore cache ", err);
                 });
 
-            _setRsyncConf(rsync, req.appconfig.rsync);
+            _setRsyncConf(rsync, req.appconfig);
 
             extraArgs.push(cachedIgnore);
 
@@ -173,56 +173,67 @@ function CreateRsyncController(app) {
 
     });
 
-    /**
-     * @api {websocket} rsync.state Event on change rsync process state
-     * @apiGroup Websocket Rsync
-     * @apiDescription
-     * Fire when rsync starts or stops and when change state
-     * @apiSuccess {string}     title   Message describe state
-     * @apiSuccess {string}   type    Enum of type of state can be start, stop or undeifined
-     * @apiSuccessExample {json}
-     * {
+    ///Web socket settings
+
+    if (io) {
+
+        io.on('connect', function(){
+            if (rsync.isRunning()) {
+                io.emit('rsync.rawstate', rsync.getBuffer());
+            }
+        });
+
+        /**
+         * @api {websocket} rsync.state Event on change rsync process state
+         * @apiGroup Websocket Rsync
+         * @apiDescription
+         * Fire when rsync starts or stops and when change state
+         * @apiSuccess {string}     title   Message describe state
+         * @apiSuccess {string}   type    Enum of type of state can be start, stop or undefined
+         * @apiSuccessExample {json}
+         * {
      *      title: "Rsync start"
      *      type: "start"
      * }
-     */
-    rsync.on('state', function (data) {
-        io.emit('rsync.state', data);
-    });
+         */
+        rsync.on('state', function (data) {
+            io.emit('rsync.state', data);
+        });
 
-    /**
-     * @api {websocket} rsync.progress Event copy progress
-     * @apiGroup Websocket Rsync
-     * @apiDescription
-     * Fire when rsync emit progress of copied file
-     * @apiSuccess {string}  filename    Name of curently coping file
-     * @apiSuccess {int}     size        file size (bytes)
-     * @apiSuccess {int}     percent     int 0..100
-     * @apiSuccess {int}     speed       int (bits/s)
-     * @apiSuccess {string}  est         est time
-     * @apiSuccessExample websocket data: {json}
-     * {
+        /**
+         * @api {websocket} rsync.progress Event copy progress
+         * @apiGroup Websocket Rsync
+         * @apiDescription
+         * Fire when rsync emit progress of copied file
+         * @apiSuccess {string}  filename    Name of currently coping file
+         * @apiSuccess {int}     size        file size (bytes)
+         * @apiSuccess {int}     percent     int 0..100
+         * @apiSuccess {int}     speed       int (bits/s)
+         * @apiSuccess {string}  est         est time
+         * @apiSuccessExample websocket data: {json}
+         * {
           filename: "filename.ext",
           size: 1000
           percent: 23,
           speed: 1200,
           est: "3:45 min"
         }
-     */
-    rsync.on('progress', function (data) {
-        io.emit('rsync.progress', data);
-    })
+         */
+        rsync.on('progress', function (data) {
+            io.emit('rsync.progress', data);
+        });
 
-    /**
-     * @api {websocket} rsync.rawoutput Event new output line
-     * @apiGroup Websocket Rsync
-     * @apiDescription
-     * Fire when rsync emit new output line
-     * @apiSuccess {string} line New output line
-     */
-    rsync.on('rawoutput', function (data) {
-        io.emit('rsync.rawoutput', data);
-    });
+        /**
+         * @api {websocket} rsync.rawoutput Event new output line
+         * @apiGroup Websocket Rsync
+         * @apiDescription
+         * Fire when rsync emit new output line
+         * @apiSuccess {string} line New output line
+         */
+        rsync.on('rawoutput', function (data) {
+            io.emit('rsync.rawoutput', data);
+        });
+    }
 
     /**
      * @apiDefine rsyncError

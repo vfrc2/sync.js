@@ -1,31 +1,54 @@
 {
   //HJSON Config file for sync.js
 
-  "webserver": {
-    "port": 3000,
-    "apiRoute": "/api"
-    //www: false, //- enable or disable www client
-  },
+  //Server part
+  "host": "127.0.0.1", //api of interface listen on
+  "port": 3000,
+  "apiRoute": "/api",
+  //www: false, //- enable or disable www client
 
-  "cacheFile":".cache",
+  //local storage use end / careful!
+  //without / will sync dir as file : target_path/dirname
+  //with wil sync content of dir : target/content_of_dir
+  "from": "./tests/_share/from/",
+  //remote storage
+  //"target":"vfrc2@server.pyt.lan:/srv/data/share/videos",
+  "target": "./tests/_share/target",
+  //Rsync default args
+  "defaultArgs": [
+    //archive and recursive
+    "-ar",
+    //same as --filter='dir-merge /.rsync-filter'
+    //repeated: --filter='- .rsync-filter'
+    "-F",
+    //prune empty directory chains from file-list
+    "-m"
+  ]
 
-  "rsync": {
+  //System settings
 
-    //local storage use end / carefull!
-    //without / will sync dir as file : target_path/dirname
-    //with wil sync content of dir : target/content_of_dir
-    "from": "./tests/_share/from",
+  //Set rsync executable if needed, default rsync
+  //Env: variable SYNCJS_RSYNC_COMMAND
+  //"rsyncCommand": "rsync",
 
-    //remote storage
-    //"target":"vfrc2@server.pyt.lan:/srv/data/share/videos",
-    "target":"./tests/_share/target",
+  //Remote list cache filename
+  //"cacheFile":".syncjscache",
 
-    "ignoreFile": ".ignoreSync",
+  //Cache check timeout
+  //"cacheTimeout": "3600000"
 
-    "defaultArgs": [
-      "-arF",
-      "--exclude=.rsync-filter"
-    ]
-  }
+  //Remote list cache on hdd filename
+  //"hddCacheFile": ".syncjscache",
+
+  //Hdd per device config filename
+  //"perDeviceConfig": ".syncjssettings",
+
+  //Path to static www file of web client
+  //"public":'./public'
+
+  //Path where watch for hdd device mount
+  //ENV: SYNCJS_MOUNT_PATH
+  //"mountPath":'/media'
+
 }
 
