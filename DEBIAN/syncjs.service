@@ -1,0 +1,13 @@
+[Service]
+ExecStart=/usr/bin/nodejs /usr/lib/syncjs/webapp.js
+Restart=always
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=syncjs
+Environment=NODE_ENV=production
+Environment=SYNCJS_MOUNT_PATH=/media/vfrc2
+Environment=SYNCJS_CACHE_FILE=/var/run/syncjs/cache
+Environment=SYNCJS_PID=/var/run/syncjs/pid
+
+[Install]
+WantedBy=multi-user.target
