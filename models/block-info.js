@@ -4,6 +4,7 @@
 
 var Promise = require('promise');
 var fs = require('fs');
+var path = require('path');
 var events = require('events');
 var util = require('util');
 
@@ -13,6 +14,7 @@ var sr = require('./../helpers/script-runner');
 var log = require('./../helpers/logger')(module);
 
 var MOUNT_PATH = undefined;
+var DEV_SETTINGS_FILE = '.syncjssettings';
 
 function CreateBlockInfo() {
 
@@ -27,7 +29,7 @@ function CreateBlockInfo() {
         log.debug("Dir " + MOUNT_PATH + "  trigered: " + event);
         //if (event === 'change')
         //needed because when inotify fire event, system no yet mount drive
-        setTimeout(function(){
+        setTimeout(function () {
             me.emit('device.connected', filename);
         }, 1000);
 
@@ -72,10 +74,16 @@ function getDevInfo(mountPath) {
                     Promise.all(
                         [
                             getDfinfo(dev),
-                            getUdev(dev)
+                            getUdev(dev),
+                            getPerDeviceSettings(dev).catch(function (err) {
+                                deviceWarning.push("Err while parse per dev config: " + err.message);
+                                return {};
+                            })
                         ])
                         .then(function (result) {
                             _fillDev(dev, result);
+
+                            dev.warning = [];
 
                             if (deviceWarning.length)
                                 dev.warning = deviceWarning;
@@ -203,6 +211,34 @@ function getUdev(dev) {
         })
 
     });
+}
+
+var readFile = Promise.denodeify(fs.readFile);
+
+function getPerDeviceSettings(dev) {
+
+    var filename = path.join(dev.mount, DEV_SETTINGS_FILE);
+
+
+    log.debug("Getting per device config " + filename);
+    return readFile(filename).then(function (data) {
+        var config = JSON.parse(data);
+
+        if (config.path) {
+            log.debug("Setting new mount path " + config.path);
+            dev.originMount = dev.mount;
+            dev.mount = path.join(dev.mount, config.path);
+        }
+
+        return {name: "setting", value: config};
+    }).catch(function(err){
+        if (err.code && err.code === 'ENOENT') {
+            log.debug("No per device settings found");
+            return {};
+        }
+        return Promise.reject(err);
+    });
+
 }
 
 function _parseDfBuffer(buffer) {

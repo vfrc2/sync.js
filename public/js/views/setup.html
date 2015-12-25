@@ -4,7 +4,7 @@
         <select class="form-control selectpicker"
                 ng-disabled="viewLoading"
                 ng-model="selectedDevice"
-                ng-options="item as item.model for item in devices track by item.mount">
+                ng-options="item as item.model for item in devices track by item.serial">
         </select>
         <span ng-show="viewLoading" class="help-block ">Loading please wait...</span>
         <span ng-hide="viewLoading" class="help-block">Space: {{ selectedDevice.used | bytes }} / {{ selectedDevice.size | bytes }}

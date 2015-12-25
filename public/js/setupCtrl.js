@@ -8,6 +8,8 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
     function ($scope, sysinfo, rsync, $q, $location, toastr) {
         "use strict";
 
+        $scope.devices = [];
+
         start();
 
         $scope.run = function (device) {
@@ -66,7 +68,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                 toastr.error(err.message);
         }
 
-        function start(){
+        function start(checkNew) {
             $scope.viewLoading = true;
 
             rsync.status()
@@ -80,10 +82,12 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                     return sysinfo.getSysInfo();
                 })
                 .then(function (results) {
+                    if (checkNew)
+                        checkNewDevices(results.devices);
                     initView(results);
                 })
                 .catch(proccedError)
-                .finally(function(){
+                .finally(function () {
                     $scope.viewLoading = false;
                 });
 
@@ -91,38 +95,82 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
         function initView(data) {
 
-            $scope.devices = data.devices;
-
             if (data.warning && data.warning.length > 0)
                 data.warning.forEach(function (war) {
                     toastr.warning(war);
                 });
 
-            if (!$scope.devices.forEach)
-                throw new Error("Bad devices!");
 
-            $scope.devices.forEach(function (dev) {
-                dev.dryRun = false;
-                dev.extraArgs = "";
-                dev.canRun = true;
+            $scope.devices.forEach(function(dev){
+                if (data.devices.filter(function(dev2){
+                        return dev.serial === dev2.serial;
+                    }).length < 1){
 
-                var ignoreFiles = [];
+                    toastr.warning("Device " + dev.model + " was disconected!");
+                    dev.canRun = false;
+                    if (!dev.warning || !dev.warning.push)
+                        dev.warning = [];
+                    dev.warning.push("Disconected");
 
-                if (dev.ignoreFiles != undefined) {
-
-                    dev.ignoreFiles = getTree(dev.ignoreFiles);
-                } else
-                    dev.ignoreFiles = [];
+                }
             });
 
-            $scope.selectedDevice = $scope.devices[0];
+            data.devices.forEach(function (dev) {
 
+                var scopeDev = findDevice(dev.serial);
+
+                if (!scopeDev) {
+                    scopeDev = dev;
+                    scopeDev.dryRun = false;
+                    scopeDev.extraArgs = "";
+                    scopeDev.canRun = true;
+
+                    var ignoreFiles = [];
+
+                    if (dev.ignoreFiles != undefined) {
+
+                        dev.ignoreFiles = getTree(dev.ignoreFiles);
+                    } else
+                        dev.ignoreFiles = [];
+
+                    $scope.devices.push(scopeDev);
+                }
+
+                scopeDev.canRun = true;
+                scopeDev.warning = dev.warning;
+
+
+
+            });
+
+            if (!$scope.selectedDevice) {
+                $scope.selectedDevice = $scope.devices[0];
+            }
+        }
+
+        function findDevice(serial) {
+
+            for (var dev in $scope.devices) {
+                if ($scope.devices[dev].serial === serial)
+                    return $scope.devices[dev];
+            }
+
+            return undefined;
+        }
+
+        function checkNewDevices(devices){
+
+            devices.forEach(function(dev){
+
+                if (!findDevice(dev.serial))
+                    toastr.info("Device " + dev.model + " conected!")
+
+            })
 
         }
 
-        sysinfo.on('newdevice', function(){
-            toastr.info("New device!");
-            start();
+        sysinfo.on('newdevice', function () {
+            start(true);
         });
 
         $scope.$on('$destroy', function (event) {
