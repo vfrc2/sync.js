@@ -1,5 +1,10 @@
+[Unit]
+Description=Syncjs web app
+
 [Service]
-ExecStart=/usr/bin/nodejs /usr/lib/syncjs/webapp.js
+Type=forking
+PIDFile=/var/run/syncjs/pid
+ExecStart=/usr/bin/nodejs /usr/lib/syncjs/webapp.js -a 0.0.0.0 -p 3123
 Restart=always
 StandardOutput=syslog
 StandardError=syslog
