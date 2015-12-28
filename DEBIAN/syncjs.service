@@ -4,6 +4,7 @@ Description=Syncjs web app
 [Service]
 Type=forking
 PIDFile=/var/run/syncjs/pid
+WorkingDirectory=/usr/lib/syncjs
 ExecStart=/usr/bin/nodejs /usr/lib/syncjs/webapp.js -a 0.0.0.0 -p 3123
 Restart=always
 StandardOutput=syslog
