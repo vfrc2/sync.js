@@ -2,9 +2,10 @@
 
 USER="root"
 NODE_ENV="production"
+ENV_VARS="NODE_ENV=production SYNCJS_MOUNT_PATH=/media/vfrc2 SYNCJS_CACHE_FILE=/var/run/syncjs/cache SYNCJS_PID=/var/run/syncjs/pid"
 PORT="3123"
 APP_DIR="/usr/lib/syncjs"
-NODE_APP="webapp.js"
+NODE_APP="webapp.js -a 0.0.0.0 -p 3123 -v"
 CONFIG_DIR="$APP_DIR"
 PID_DIR="/var/run/"
 PID_FILE="$PID_DIR/syncjs.pid"
@@ -53,7 +54,7 @@ start_it() {
     chown $USER:$USER "$LOG_DIR"
 
     echo "Starting node app ..."
-    echo "cd $APP_DIR && PORT=$PORT NODE_ENV=$NODE_ENV NODE_CONFIG_DIR=$CONFIG_DIR $NODE_EXEC $APP_DIR/$NODE_APP 1>$LOG_FILE 2>&1 & echo \$! > $PID_FILE" | sudo -i -u $USER
+    echo "cd $APP_DIR && PORT=$PORT $ENV_VARS NODE_ENV=$NODE_ENV NODE_CONFIG_DIR=$CONFIG_DIR $NODE_EXEC $APP_DIR/$NODE_APP 1>$LOG_FILE 2>&1 & echo \$! > $PID_FILE" | sudo -i -u $USER
     echo "Node app started with pid $(get_pid)"
 }
 

@@ -204,7 +204,7 @@ function checkConfig(args) {
 function checkPid(pid) {
 
     if (fs.existsSync(pid)) {
-        throw new Error("Server already started");
+        //throw new Error("Server already started");
     }
 }
 
