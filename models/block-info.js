@@ -71,15 +71,22 @@ function CreateBlockInfo(mountPath) {
                         Promise.all(
                             [
                                 getDfinfo(dev),
-                                getUdev(dev),
+                                getUdev(dev).catch(function(err){
+                                    deviceWarning.push(err.message);
+                                    return undefined;
+                                }),
                                 getPerDeviceSettings(dev, me.settingsFilename)
                                     .catch(function (err) {
                                         deviceWarning.push("Err while parse per dev config: " + err.message);
-                                        return {};
+                                        return undefined;
                                     })
                             ])
                             .then(function (result) {
-                                _fillDev(dev, result);
+
+                                _fillDev(dev, cleanList(result));
+
+                                if (!dev.model)
+                                    dev.model = dev.dev;
 
                                 dev.warning = [];
 
@@ -109,6 +116,8 @@ function CreateBlockInfo(mountPath) {
             return process.done.then(function () {
                 return Promise.all(promises).then(function (devices) {
 
+                    devices = cleanList(devices);
+
                     if (!(devices && devices.length > 0)) {
                         overalWarning.push("No devices!");
                     }
@@ -127,7 +136,16 @@ function CreateBlockInfo(mountPath) {
 
 util.inherits(CreateBlockInfo, events.EventEmitter);
 
+function cleanList(list){
 
+    var cleanedList = [];
+
+    for (var i in list)
+        if (list[i])
+            cleanedList.push(list[i]);
+
+    return cleanedList;
+}
 
 function getDfinfo(dev) {
 
@@ -174,6 +192,7 @@ function getUdev(dev) {
     log.debug("Start 'udevadm'");
     log.debug("Udevadm args: %s", args);
 
+
     var uadm = sr.spawn("udevadm", args,
         {
             pipe: require("stream-splitter")('\n')
@@ -184,6 +203,8 @@ function getUdev(dev) {
         var data = [];
 
         var errs = [];
+
+        //throw new Error("Error spawn udevadm");
 
         result.stdout.encoding = 'utf8';
         result.stdout.on('token', function (token) {
@@ -290,7 +311,8 @@ function _fillDev(dev, atrs) {
             _fillDev(dev, atr);
         }
         else {
-            dev[atr.name] = atr.value;
+            if (atr.name && atr.value)
+                dev[atr.name] = atr.value;
         }
     });
 
