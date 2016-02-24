@@ -93,14 +93,12 @@ function getRemoteFileList(filename, rsyncTarget) {
     log.debug("Get remote file list in " + filename);
     var rsync = new Rsync();
 
-    rsync.target = rsyncTarget;
-
     var ws = getNewWS(filename);
 
     var counter = 0;
 
     return ws.then(function (stream) {
-        return rsync.getRemoteFiles([],
+        return rsync.getRemoteFiles(rsyncTarget, [],
             function (file) {
                 stream.write('- ' + path.basename(file.filename) + '\n', 'utf8');
                 counter++;
@@ -159,4 +157,5 @@ function getNewWS(filename) {
 
 }
 
+//Singleton pattern
 module.exports = CreateIgnoreFileCache();

@@ -1,69 +1,71 @@
-
-    <div class="form-group" ng-class=" {'has-warning': selectedDevice.warning && selectedDevice.warning.length > 0}">
-        <label class="control-label">Device:</label>
-        <select class="form-control selectpicker"
-                ng-disabled="viewLoading"
-                ng-model="selectedDevice"
-                ng-options="item as item.model for item in devices track by item.serial">
-        </select>
-        <span ng-show="viewLoading" class="help-block ">Loading please wait...</span>
+<div class="form-group">
+    <label class="control-label">Role: {{role}}</label>
+</div>
+<div class="form-group" ng-class=" {'has-warning': selectedDevice.warning && selectedDevice.warning.length > 0}">
+    <label class="control-label">Device:</label>
+    <select class="form-control selectpicker"
+            ng-disabled="viewLoading"
+            ng-model="selectedDevice"
+            ng-options="item as item.model for item in devices track by item.serial">
+    </select>
+    <span ng-show="viewLoading" class="help-block ">Loading please wait...</span>
         <span ng-hide="viewLoading" class="help-block">Space: {{ selectedDevice.used | bytes }} / {{ selectedDevice.size | bytes }}
             (Free: {{ selectedDevice.available | bytes }})</span>
         <span ng-repeat-start="warn in selectedDevice.warning"
               class="help-block " ng-repeat-end="">{{warn}}</span>
+</div>
+<div class="form-group">
+    <label class="control-label">Path:</label>
+    <input class="form-control"
+           ng-disabled="viewLoading"
+           ng-model="selectedDevice.mount">
+</div>
+<div class="form-group">
+    <div class="checkbox">
+        <label><input type="checkbox"
+                      ng-disabled="viewLoading"
+                      ng-model="selectedDevice.dryRun"
+                      value="">Dry run (-n)</label>
     </div>
-    <div class="form-group">
-        <label class="control-label">Path:</label>
-        <input class="form-control"
-               ng-disabled="viewLoading"
-               ng-model="selectedDevice.mount">
-    </div>
-    <div class="form-group">
-        <div class="checkbox">
-            <label><input type="checkbox"
-                          ng-disabled="viewLoading"
-                          ng-model="selectedDevice.dryRun"
-                          value="">Dry run (-n)</label>
-        </div>
-    </div>
-    <div class="form-group">
-        <button class="btn btn-success"
-                ng-disabled="viewLoading || !selectedDevice.canRun"
-                ng-click="run(selectedDevice)">Run!</button>
-    </div>
+</div>
+<div class="form-group">
+    <button class="btn btn-success"
+            ng-disabled="viewLoading || !selectedDevice.canRun"
+            ng-click="run(selectedDevice)">Run!</button>
+</div>
 
-    <div class="form-group">
-        <label for="comment">Rsync extra args:</label>
+<div class="form-group">
+    <label for="comment">Rsync extra args:</label>
         <textarea class="form-control"
                   ng-model="selectedDevice.extraArgs"
                   ng-disabled="viewLoading"
                   rows="2" id="comment">
         </textarea>
+</div>
+
+<div class="form-group">
+    <label class="control-label" for="comment">Ignore files:</label>
+
+    <div class="btn-group btn-group-sm">
+        <button class="btn btn-default" ng-disabled="viewLoading" ng-click="selectAll(true)">Select All</button>
+        <button class="btn btn-default" ng-disabled="viewLoading" ng-click="selectAll(false)">Clear selected</button>
     </div>
 
-    <div class="form-group">
-        <label class="control-label" for="comment">Ignore files:</label>
-
-        <div class="btn-group btn-group-sm">
-            <button class="btn btn-default" ng-disabled="viewLoading" ng-click="selectAll(true)">Select All</button>
-            <button class="btn btn-default" ng-disabled="viewLoading" ng-click="selectAll(false)">Clear selected</button>
-        </div>
-
-        <script type="text/ng-template" id="item">
-            <div class="checkbox">
-                <label><input type="checkbox" ng-change="selectChange(data)" ng-model="data.checked"
-                              indeterminate>{{data.name}}</label>
-                <ul>
-                    <li ng-repeat="data in data.childs" ng-include="'item'"></li>
-                </ul>
-            </div>
-        </script>
-
-        <div>
-            <ul >
-                <li  ng-repeat="data in selectedDevice.ignoreFiles" ng-include="'item'">
-                </li>
+    <script type="text/ng-template" id="item">
+        <div class="checkbox">
+            <label><input type="checkbox" ng-change="selectChange(data)" ng-model="data.checked"
+                          indeterminate>{{data.name}}</label>
+            <ul>
+                <li ng-repeat="data in data.childs" ng-include="'item'"></li>
             </ul>
         </div>
+    </script>
 
+    <div>
+        <ul >
+            <li  ng-repeat="data in selectedDevice.ignoreFiles" ng-include="'item'">
+            </li>
+        </ul>
     </div>
+
+</div>

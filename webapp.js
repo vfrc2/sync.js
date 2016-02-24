@@ -21,6 +21,8 @@ try {
 
     checkPid(config.pid);
 
+    app.use(logger.expressLogger(module));
+
     log.debug("Starting server...");
     var server = app.listen(config.port, config.host, function (err) {
         "use strict";
@@ -128,8 +130,8 @@ function getConfig() {
                 describe: "enable web interface (-no-www to disable www client)"
             })
 
-            .option('from', {
-                alias: 'f',
+            .option('origin', {
+                alias: 'o',
                 group: 'Rsync:',
                 //demand: true,
                 nargs: 1,
@@ -147,6 +149,14 @@ function getConfig() {
             .option('v', {
                 alias: "verbose",
                 description: 'set global log level to debug'
+            })
+            .option('role', {
+                nargs: 1,
+                description: 'role of the server way of copying files downloader or consumer'
+            })
+            .option('emulate', {
+                nargs: 1,
+                description: 'emulate connected flash drive path'
             })
             .env("SYNCJS_")
             .usage('Usage: $0 [options]')
@@ -197,7 +207,7 @@ function getConfig() {
 }
 
 function checkConfig(args) {
-    if (!args.from || !args.target)
+    if (!args.origin || !args.target)
         throw new ConfigError("Rsync from and target paths are required");
 }
 

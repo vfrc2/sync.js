@@ -27,7 +27,7 @@
         ];
 
         stream.writable = true;
-        stream.encoding = 'utf8'
+        stream.encoding = 'utf8';
         src = null;
 
         indexOfdel = function (buf, finalIndex) {

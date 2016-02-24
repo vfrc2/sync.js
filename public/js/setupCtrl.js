@@ -9,6 +9,7 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
         "use strict";
 
         $scope.devices = [];
+        $scope.role = "";
 
         start();
 
@@ -43,8 +44,6 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
                     function (err) {
                         toastr.error(err.message);
                     });
-
-
         };
 
         $scope.selectChange = function (data) {
@@ -73,6 +72,8 @@ myApp.controller('setupCtrl', ['$scope', 'sysinfo', 'rsync', '$q', '$location', 
 
             rsync.status()
                 .then(function (status) {
+
+                    $scope.role = status.role || "";
 
                     if (status.isRunning) {
                         $location.path('/status');

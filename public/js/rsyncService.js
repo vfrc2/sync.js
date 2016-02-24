@@ -35,7 +35,7 @@ myApp.factory("rsync", ['$http', '$q', '$rootScope', 'socket', function ($http, 
         var data = {
             path: path,
             extraArgs: args
-        }
+        };
 
         return $http.post('/api/start', data)
             .finally(function () {

@@ -29,17 +29,11 @@ function CreateRsync() {
 
     var outputBuffer = [];
 
-    //options
-
-    this.from = undefined;
-    this.target = undefined;
     this.defaultArgs = [];
-
-
 
     //actions
 
-    this.start = function start(path, extraArgs) {
+    this.start = function start(from, to, extraArgs) {
 
         isRun = true;
         isFinished = false;
@@ -47,11 +41,14 @@ function CreateRsync() {
 
         var me = this;
 
-        me._checkGlobalArgs();
+        if (!from)
+            throw new RsyncError("Empty from directory");
+        if (!to)
+            throw new RsyncError("Empty to directory");
 
         return me._resolveArgs(extraArgs)
             .then(me._pushArgs(me.defaultArgs))
-            .then(me._pushArgs([me.from, path]))
+            .then(me._pushArgs([from, to]))
             .then(me._pushSystemArgs())
             .then(me._getRsyncSpawn())
             .then(me._wireEmitters())
@@ -70,16 +67,19 @@ function CreateRsync() {
 
     };
 
-    this.getFiles = function(path, extraArgs, fileHandler){
+    this.getFiles = function(from, to, extraArgs, fileHandler){
         var me = this;
 
         log.debug("Get files from norm run");
 
-        me._checkGlobalArgs();
+        if (!from)
+            throw new RsyncError("Empty from directory");
+        if (!to)
+            throw new RsyncError("Empty to directory");
 
         return me._resolveArgs(extraArgs)
             .then(me._pushArgs(me.defaultArgs))
-            .then(me._pushArgs([me.from, path]))
+            .then(me._pushArgs([from, to]))
             .then(me._pushSystemArgs())
             .then(me._getRsyncSpawn())
             .then(me._wireEmitters())
@@ -92,19 +92,19 @@ function CreateRsync() {
             });
     };
 
-    this.getRemoteFiles = function (extraArgs, fileHandler) {
+    this.getRemoteFiles = function (remote, extraArgs, fileHandler) {
 
         var me = this;
 
         log.debug("Remote run");
 
-        if (!me.target)
+        if (!remote)
             throw new RsyncError("No remote directory");
 
         return Promise.resolve()
             .then(me._resolveArgs(extraArgs))
             .then(me._pushArgs(['-rn']))
-            .then(me._pushArgs([me.target, "/tmp"]))
+            .then(me._pushArgs([remote, "/tmp"]))
             .then(me._pushSystemArgs())
             .then(me._getRsyncSpawn())
             .then(me._wireEmitters())
@@ -325,15 +325,7 @@ function CreateRsync() {
             });
         }
 
-    }
-
-    this._checkGlobalArgs = function(){
-        log.debug("Check global args");
-
-        if (!this.from)
-            throw new RsyncError("Empty from directory");
-
-    }
+    };
 
 }
 

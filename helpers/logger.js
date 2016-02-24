@@ -48,7 +48,11 @@ createLogger.setConfing = function (config) {
 
 createLogger.setGlobalLevel = function (level) {
     log4js.setGlobalLogLevel(level);
-}
+};
+
+createLogger.expressLogger = function (module, tag){
+    return log4js.connectLogger(createLogger(module, tag), { level: 'auto' })
+};
 
 
 module.exports = createLogger;

@@ -35,17 +35,10 @@ function CreateRsyncController(app) {
 
     router.use(function (req, res, next) {
         req.apprsync = rsync;
-        next();
-    });
-
-    router.use(function (req, res, next) {
         rsyncCache.rsyncConfig = req.appconfig;
         req.rsyncCache = rsyncCache;
-        next();
-    });
 
-    router.use(function(req, res, next){
-        res.setHeader('cache-control','no-cache');
+        res.setHeader('cache-control', 'no-cache');
         next();
     });
 
@@ -79,11 +72,12 @@ function CreateRsyncController(app) {
             var obj = {
                 isRunning: rsync.isRunning(),
                 isFinished: rsync.isFinished(),
-                outputBuffer: rsync.isRunning() || rsync.isFinished() ? rsync.getBuffer() : []
+                outputBuffer: rsync.isRunning() || rsync.isFinished() ? rsync.getBuffer() : [],
+                role: req.appconfig.role
             };
 
             res.setHeader('Content-Type', 'application/json');
-            res.setHeader('Cache-Control','no-cache');
+            res.setHeader('Cache-Control', 'no-cache');
             res.end(JSON.stringify(obj));
 
         } catch (error) {
@@ -121,21 +115,32 @@ function CreateRsyncController(app) {
             reqLog.debug("Start rsync with params: %s", req.body);
 
 
-            var path = req.body.path;
-            var extraArgs = req.body.extraArgs;
+            var reqPath = _clearPath(req.body.path, req.appconfig.mountPath);
 
-            var cachedIgnore = req.rsyncCache.getCachedFile(path, forceUpdate)
-                .then(function (ignoreFilename) {
-                    return "--exclude-from=" + ignoreFilename;
-                }).catch(function (err) {
-                    log.warn("Error getting ignore cache ", err);
-                });
+            var from = req.appconfig.origin;
+            var to = reqPath;
 
             _setRsyncConf(rsync, req.appconfig);
 
-            extraArgs.push(cachedIgnore);
+            var extraArgs = req.body.extraArgs;
 
-            rsync.start(path, extraArgs).then(
+            if (req.appconfig.role != 'consumer') {
+
+                var cachedIgnore = req.rsyncCache.getCachedFile(path, forceUpdate)
+                    .then(function (ignoreFilename) {
+                        return "--exclude-from=" + ignoreFilename;
+                    }).catch(function (err) {
+                        log.warn("Error getting ignore cache ", err);
+                    });
+
+                extraArgs.push(cachedIgnore);
+            } else {
+
+                from = reqPath;
+                to = req.appconfig.origin;
+            }
+
+            rsync.start(from, to, extraArgs).then(
                 _getSentOk(req, res),
                 _getErrAnswer(req, res, next));
 
@@ -145,10 +150,7 @@ function CreateRsyncController(app) {
 
         function _setRsyncConf(rsync, conf) {
 
-            rsync.from = conf.from;
-            rsync.target = conf.target;
             rsync.defaultArgs = conf.defaultArgs;
-
         }
 
     });
@@ -177,7 +179,7 @@ function CreateRsyncController(app) {
 
     if (io) {
 
-        io.on('connect', function(){
+        io.on('connect', function () {
             if (rsync.isRunning()) {
                 io.emit('rsync.rawstate', rsync.getBuffer());
             }
@@ -263,7 +265,7 @@ function CreateRsyncController(app) {
 
 function _getSentOk(req, res) {
     return function () {
-        res.setHeader('Cache-Control','no-cache');
+        res.setHeader('Cache-Control', 'no-cache');
         res.statusCode = 200;
         res.end();
     }
@@ -272,6 +274,16 @@ function _getErrAnswer(req, res, next) {
     return function (err) {
         next(err);
     }
+}
+
+function _clearPath(localPath, chroot){
+    var path = require('path');
+    tmp = path.normalize(localPath);
+
+    if (!path.relative(tmp, chroot))
+        throw new ServerError("Bad path" + localPath);
+
+    return tmp;
 }
 
 log.debug('Rsync controller loaded');

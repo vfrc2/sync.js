@@ -10,7 +10,7 @@
   //local storage use end / careful!
   //without / will sync dir as file : target_path/dirname
   //with wil sync content of dir : target/content_of_dir
-  "from": "./tests/_share/from/",
+  "origin": "./tests/_share/from/",
   //remote storage
   //"target":"vfrc2@server.pyt.lan:/srv/data/share/videos",
   "target": "./tests/_share/target",
@@ -48,7 +48,11 @@
 
   //Path where watch for hdd device mount
   //ENV: SYNCJS_MOUNT_PATH
-  "mountPath":"/media/vfrc2"
+  "mountPath":"/media/vfrc2",
+
+  //Work role (way of copy files)
+  //"role": "downloader" //from comp to hdd
+  "role": "consumer" //from hdd to comp (from param)
 
 }
 

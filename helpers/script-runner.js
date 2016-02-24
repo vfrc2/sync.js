@@ -13,7 +13,7 @@ function spawn(prog, args, options) {
         options = {
         };
 
-    var p = new Promise(function (resolve, reject) {
+    return new Promise(function (resolve, reject) {
 
         var child = proc.spawn(prog, args);
         child.err = null;
@@ -56,8 +56,6 @@ function spawn(prog, args, options) {
             })
         });
     });
-
-    return p;
 }
 
 module.exports.spawn = spawn;

@@ -19,6 +19,7 @@ function CreateSysinfo(app) {
     var blockInfo = new BlockInfo(app.appconfig.mountPath);
 
     blockInfo.settingsFilename = app.appconfig.perDeviceSettings;
+    blockInfo.emulateFlash = app.appconfig.e || app.appconfig.emulate;
 
     var router = express.Router();
 
@@ -95,27 +96,31 @@ function CreateSysinfo(app) {
 
         return function (deviceResult) {
 
-            log.debug("Getting dry run file lists");
-
             var deviceList = deviceResult.devices;
-
-            var forceUpdate = req.headers['cache-control'] === 'no-cache';
 
             if (!deviceList || !deviceList.forEach || !deviceList.length > 0)
                 return Promise.resolve(deviceResult);
 
-            var ignoreFile = req.rsyncCache.getCachedFile(null, forceUpdate)
-                .then(function (ignoreFilename) {
-                    return "--exclude-from=" + ignoreFilename;
-                }).catch(function (err) {
-                    log.warn("Error getting ignore cache ", err);
+            var ignoreFile = null;
 
-                    if (!deviceResult.warning || !deviceResult.warning.push)
-                        deviceResult.warning = [];
+            if (req.appconfig.role != 'consumer') {
+                log.debug("Getting dry run file lists");
 
-                    deviceResult.warning.push(err.message);
-                    return undefined;
-                });
+                var forceUpdate = req.headers['cache-control'] === 'no-cache';
+
+                ignoreFile = req.rsyncCache.getCachedFile(null, forceUpdate)
+                    .then(function (ignoreFilename) {
+                        return "--exclude-from=" + ignoreFilename;
+                    }).catch(function (err) {
+                        log.warn("Error getting ignore cache ", err);
+
+                        if (!deviceResult.warning || !deviceResult.warning.push)
+                            deviceResult.warning = [];
+
+                        deviceResult.warning.push(err.message);
+                        return undefined;
+                    });
+            }
 
             var promises = [];
 
@@ -137,16 +142,29 @@ function CreateSysinfo(app) {
 
         var rsync = new Rsync();
 
-        rsync.from = req.appconfig.from;
-        rsync.defaultArgs = req.appconfig.defaultArgs;
+        rsync.defaultArgs = app.appconfig.defaultArgs;
 
-        return rsync.getFiles(device.mount, ['-n', ignoreFile])
+        var extraArgs = ['-n'];
+
+        var from = req.appconfig.origin;
+        var to = device.mount;
+
+        if  (req.appconfig.role == 'consumer'){
+            from = device.mount;
+            to = req.appconfig.origin;
+        }
+
+        if (ignoreFile)
+            extraArgs.push(ignoreFile);
+
+        return rsync.getFiles(from, to,  extraArgs)
             .then(function (ignoreFiles) {
                 device.ignoreFiles = ignoreFiles;
             })
             .catch(function (err) {
                 log.warn("Error geting dry run files ", err);
-                if (!device.warning.push)
+
+                if (!deviceResult.warning || !deviceResult.warning.push)
                     device.warning = [];
 
                 device.warning.push(err.message);

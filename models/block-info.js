@@ -20,6 +20,7 @@ function CreateBlockInfo(mountPath) {
 
     this.mountPath = mountPath;
     this.settingsFilename = undefined;
+    this.emulateFlash = undefined;
 
     this.getDevInfo = function () {
         return getDevInfo(this.mountPath);
@@ -53,67 +54,18 @@ function CreateBlockInfo(mountPath) {
 
             var overalWarning = [];
 
+            if (me.emulateFlash) {
+                promises.push(returnFakeDev("/dev/fake", me.emulateFlash))
+            };
+
             process.stdout.on("token", function (token) {
-                try {
-                    log.debug("Get dev string '%s'", token);
-                    var tkn = token.split(" ", 2);
-
-                    var dev = {
-                        dev: tkn[0],
-                        mount: tkn[1]
-                    };
-
-                    log.debug("Parse dev: %s", dev);
-
-                    var deviceWarning = [];
-
-                    promises.push(
-                        Promise.all(
-                            [
-                                getDfinfo(dev),
-                                getUdev(dev).catch(function(err){
-                                    deviceWarning.push(err.message);
-                                    return undefined;
-                                }),
-                                getPerDeviceSettings(dev, me.settingsFilename)
-                                    .catch(function (err) {
-                                        deviceWarning.push("Err while parse per dev config: " + err.message);
-                                        return undefined;
-                                    })
-                            ])
-                            .then(function (result) {
-
-                                _fillDev(dev, cleanList(result));
-
-                                if (!dev.model)
-                                    dev.model = dev.dev;
-
-                                dev.warning = [];
-
-                                if (deviceWarning.length)
-                                    dev.warning = deviceWarning;
-
-                                return dev;
-                            })
-                            .catch(function (err) {
-                                log.error("Dev '%s'  get info error", dev.dev, err.message);
-                                log.debug("Dev: ", dev.dev, err.stack);
-
-                                overalWarning.push("Error while parse dev " + dev.dev +
-                                    " " + err.message);
-
-                                return undefined;
-                            })
-                    );
-                } catch (err) {
-                    log.error("Devinfo error", err.message);
-                    log.debug("Devinfo stack", err.stack);
-                    overalWarning.push("Error while parse devices! " +
-                        " " + err.message);
-                }
+                log.debug("Get dev string '%s'", token);
+                var tkn = token.split(" ", 2);
+                promises.push(onDeviceInput(tkn[1], tkn[2]));
             });
 
             return process.done.then(function () {
+
                 return Promise.all(promises).then(function (devices) {
 
                     devices = cleanList(devices);
@@ -136,7 +88,7 @@ function CreateBlockInfo(mountPath) {
 
 util.inherits(CreateBlockInfo, events.EventEmitter);
 
-function cleanList(list){
+function cleanList(list) {
 
     var cleanedList = [];
 
@@ -146,6 +98,76 @@ function cleanList(list){
 
     return cleanedList;
 }
+
+function returnFakeDev(dev, mount){
+
+    return {
+        dev: dev,
+        mount: mount,
+        model: "Fake Flash",
+        serial: "0000001",
+        size: "100000",
+        available: "1000000",
+        used: "0",
+        warrning: []
+    }
+}
+
+function onDeviceInput(dev, mount) {
+    try {
+
+        var dev = {
+            dev: dev,
+            mount: mount
+        };
+
+        log.debug("Parse dev: %s", dev);
+
+        var deviceWarning = [];
+
+        return Promise.all(
+            [
+                getDfinfo(dev),
+                getUdev(dev).catch(function (err) {
+                    deviceWarning.push(err.message);
+                    return undefined;
+                }),
+                getPerDeviceSettings(dev, me.settingsFilename)
+                    .catch(function (err) {
+                        deviceWarning.push("Err while parse per dev config: " + err.message);
+                        return undefined;
+                    })
+            ])
+            .then(function (result) {
+
+                _fillDev(dev, cleanList(result));
+
+                if (!dev.model)
+                    dev.model = dev.dev;
+
+                dev.warning = [];
+
+                if (deviceWarning.length)
+                    dev.warning = deviceWarning;
+
+                return dev;
+            })
+            .catch(function (err) {
+                log.error("Dev '%s'  get info error", dev.dev, err.message);
+                log.debug("Dev: ", dev.dev, err.stack);
+
+                overalWarning.push("Error while parse dev " + dev.dev +
+                    " " + err.message);
+
+                return undefined;
+            });
+    } catch (err) {
+        log.error("Devinfo error", err.message);
+        log.debug("Devinfo stack", err.stack);
+        overalWarning.push("Error while parse devices! " +
+            " " + err.message);
+    }
+};
 
 function getDfinfo(dev) {
 
@@ -268,7 +290,7 @@ function _parseDfBuffer(buffer) {
     if (lines.length < 2)
         throw(new Error("Error parsing df output"));
 
-    var str = lines[1].replace(/\s+/,' ');
+    var str = lines[1].replace(/\s+/, ' ');
 
     var sizes = str.split(' ', 4);
 
