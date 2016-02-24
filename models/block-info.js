@@ -150,8 +150,8 @@ function cleanList(list){
 function getDfinfo(dev) {
 
     var args = [
-        dev.dev,
-        "--output=used,avail,size",
+        dev.dev, "-P",
+        //"--output=used,avail,size",
         "--block-size=1"
     ];
 
@@ -187,7 +187,7 @@ function getDfinfo(dev) {
 
 function getUdev(dev) {
 
-    var args = ["info", "-a", dev.dev];
+    var args = ["info", "-a", "-n", dev.dev];
 
     log.debug("Start 'udevadm'");
     log.debug("Udevadm args: %s", args);
@@ -268,16 +268,18 @@ function _parseDfBuffer(buffer) {
     if (lines.length < 2)
         throw(new Error("Error parsing df output"));
 
-    var sizes = lines[1].split(" ", 3);
+    var str = lines[1].replace(/\s+/,' ');
+
+    var sizes = str.split(' ', 4);
 
     if (sizes.length < 3)
         throw(new Error("Error parsing df output"));
 
     var data = [];
 
-    data.push({name: "used", value: parseInt(sizes[0])});
-    data.push({name: "available", value: parseInt(sizes[1])});
-    data.push({name: "size", value: parseInt(sizes[2])});
+    data.push({name: "used", value: parseInt(sizes[2])});
+    data.push({name: "available", value: parseInt(sizes[3])});
+    data.push({name: "size", value: parseInt(sizes[1])});
 
     return data;
 }

@@ -23,7 +23,7 @@
     "-F",
     //prune empty directory chains from file-list
     "-m"
-  ]
+  ],
 
   //System settings
 
@@ -48,7 +48,7 @@
 
   //Path where watch for hdd device mount
   //ENV: SYNCJS_MOUNT_PATH
-  //"mountPath":'/media'
+  "mountPath":"/media/vfrc2"
 
 }
 
