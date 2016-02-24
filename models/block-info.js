@@ -56,7 +56,7 @@ function CreateBlockInfo(mountPath) {
 
             if (me.emulateFlash) {
                 promises.push(returnFakeDev("/dev/fake", me.emulateFlash))
-            };
+            }
 
             process.stdout.on("token", function (token) {
                 log.debug("Get dev string '%s'", token);
@@ -215,7 +215,7 @@ function getUdev(dev) {
     log.debug("Udevadm args: %s", args);
 
 
-    var uadm = sr.spawn("udevadm", args,
+    var uadm = sr.spawn("/sbin/udevadm", args,
         {
             pipe: require("stream-splitter")('\n')
         });
