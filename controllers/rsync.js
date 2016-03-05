@@ -126,7 +126,7 @@ function CreateRsyncController(app) {
 
             if (req.appconfig.role != 'consumer') {
 
-                var cachedIgnore = req.rsyncCache.getCachedFile(path, forceUpdate)
+                var cachedIgnore = req.rsyncCache.getCachedFile(to, forceUpdate)
                     .then(function (ignoreFilename) {
                         return "--exclude-from=" + ignoreFilename;
                     }).catch(function (err) {
