@@ -61,7 +61,7 @@ function CreateBlockInfo(mountPath) {
             process.stdout.on("token", function (token) {
                 log.debug("Get dev string '%s'", token);
                 var tkn = token.split(" ", 2);
-                promises.push(onDeviceInput(tkn[1], tkn[2]));
+                promises.push(onDeviceInput(tkn[0], tkn[1]));
             });
 
             return process.done.then(function () {
@@ -84,262 +84,262 @@ function CreateBlockInfo(mountPath) {
 
     }
 
-}
 
-util.inherits(CreateBlockInfo, events.EventEmitter);
+    function cleanList(list) {
 
-function cleanList(list) {
+        var cleanedList = [];
 
-    var cleanedList = [];
+        for (var i in list)
+            if (list[i])
+                cleanedList.push(list[i]);
 
-    for (var i in list)
-        if (list[i])
-            cleanedList.push(list[i]);
-
-    return cleanedList;
-}
-
-function returnFakeDev(dev, mount){
-
-    return {
-        dev: dev,
-        mount: mount,
-        model: "Fake Flash",
-        serial: "0000001",
-        size: "100000",
-        available: "1000000",
-        used: "0",
-        warrning: []
+        return cleanedList;
     }
-}
 
-function onDeviceInput(dev, mount) {
-    try {
+    function returnFakeDev(dev, mount) {
 
-        var dev = {
+        return {
             dev: dev,
-            mount: mount
-        };
-
-        log.debug("Parse dev: %s", dev);
-
-        var deviceWarning = [];
-
-        return Promise.all(
-            [
-                getDfinfo(dev),
-                getUdev(dev).catch(function (err) {
-                    deviceWarning.push(err.message);
-                    return undefined;
-                }),
-                getPerDeviceSettings(dev, me.settingsFilename)
-                    .catch(function (err) {
-                        deviceWarning.push("Err while parse per dev config: " + err.message);
-                        return undefined;
-                    })
-            ])
-            .then(function (result) {
-
-                _fillDev(dev, cleanList(result));
-
-                if (!dev.model)
-                    dev.model = dev.dev;
-
-                dev.warning = [];
-
-                if (deviceWarning.length)
-                    dev.warning = deviceWarning;
-
-                return dev;
-            })
-            .catch(function (err) {
-                log.error("Dev '%s'  get info error", dev.dev, err.message);
-                log.debug("Dev: ", dev.dev, err.stack);
-
-                overalWarning.push("Error while parse dev " + dev.dev +
-                    " " + err.message);
-
-                return undefined;
-            });
-    } catch (err) {
-        log.error("Devinfo error", err.message);
-        log.debug("Devinfo stack", err.stack);
-        overalWarning.push("Error while parse devices! " +
-            " " + err.message);
+            mount: mount,
+            model: "Fake Flash",
+            serial: "0000001",
+            size: "100000",
+            available: "1000000",
+            used: "0",
+            warrning: []
+        }
     }
-};
 
-function getDfinfo(dev) {
+    function onDeviceInput(dev, mount) {
+        try {
 
-    var args = [
-        dev.dev, "-P",
-        //"--output=used,avail,size",
-        "--block-size=1"
-    ];
+            var dev = {
+                dev: dev,
+                mount: mount
+            };
 
-    log.debug("Start 'df'");
-    log.debug("Df args: %s", args);
+            log.debug("Parse dev: %s", dev);
 
-    var df = sr.spawn("df", args, {
-        pipe: require("stream-splitter")('\n')
-    });
+            var deviceWarning = [];
 
-    //throw new Error("test error");
+            return Promise.all(
+                [
+                    getDfinfo(dev),
+                    getUdev(dev).catch(function (err) {
+                        deviceWarning.push(err.message);
+                        return undefined;
+                    }),
+                    getPerDeviceSettings(dev, me.settingsFilename)
+                        .catch(function (err) {
+                            deviceWarning.push("Err while parse per dev config: " + err.message);
+                            return undefined;
+                        })
+                ])
+                .then(function (result) {
 
-    return df.then(function (process) {
+                    _fillDev(dev, cleanList(result));
 
-        var buffer = "";
+                    if (!dev.model)
+                        dev.model = dev.dev;
 
-        process.stdout.encoding = 'utf8';
-        process.stdout.on("token", function (token) {
+                    dev.warning = [];
 
-            buffer += token + '\n';
+                    if (deviceWarning.length)
+                        dev.warning = deviceWarning;
 
-        });
+                    return dev;
+                })
+                .catch(function (err) {
+                    log.error("Dev '%s'  get info error", dev.dev, err.message);
+                    log.debug("Dev: ", dev.dev, err.stack);
 
-        return process.done.then(function (exitcode) {
+                    overalWarning.push("Error while parse dev " + dev.dev +
+                        " " + err.message);
 
-            if (exitcode != 0)
-                throw new Error("df exit with " + exitcode);
+                    return undefined;
+                });
+        } catch (err) {
+            log.error("Devinfo error", err.message);
+            log.debug("Devinfo stack", err.stack);
+            overalWarning.push("Error while parse devices! " +
+                " " + err.message);
+        }
+    };
 
-            return _parseDfBuffer(buffer);
-        });
-    });
-}
+    function getDfinfo(dev) {
 
-function getUdev(dev) {
+        var args = [
+            dev.dev, "-P",
+            //"--output=used,avail,size",
+            "--block-size=1"
+        ];
 
-    var args = ["info", "-a", "-n", dev.dev];
+        log.debug("Start 'df'");
+        log.debug("Df args: %s", args);
 
-    log.debug("Start 'udevadm'");
-    log.debug("Udevadm args: %s", args);
-
-
-    var uadm = sr.spawn("/sbin/udevadm", args,
-        {
+        var df = sr.spawn("df", args, {
             pipe: require("stream-splitter")('\n')
         });
 
-    return uadm.then(function (result) {
+        //throw new Error("test error");
+
+        return df.then(function (process) {
+
+            var buffer = "";
+
+            process.stdout.encoding = 'utf8';
+            process.stdout.on("token", function (token) {
+
+                buffer += token + '\n';
+
+            });
+
+            return process.done.then(function (exitcode) {
+
+                if (exitcode != 0)
+                    throw new Error("df exit with " + exitcode);
+
+                return _parseDfBuffer(buffer);
+            });
+        });
+    }
+
+    function getUdev(dev) {
+
+        var args = ["info", "-a", "-n", dev.dev];
+
+        log.debug("Start 'udevadm'");
+        log.debug("Udevadm args: %s", args);
+
+
+        var uadm = sr.spawn("/sbin/udevadm", args,
+            {
+                pipe: require("stream-splitter")('\n')
+            });
+
+        return uadm.then(function (result) {
+
+            var data = [];
+
+            var errs = [];
+
+            //throw new Error("Error spawn udevadm");
+
+            result.stdout.encoding = 'utf8';
+            result.stdout.on('token', function (token) {
+                try {
+                    var atr = _parseUdevAtr(token);
+
+                    if (atr != null && !data.some(checkExists, atr)) {
+                        data.push(atr);
+                    }
+                } catch (err) {
+                    errs.push(err)
+                }
+            });
+
+            function checkExists(cur, index, array) {
+                return this.name === cur.name;
+            }
+
+            return result.done.then(function () {
+
+                if (errs.length > 0)
+                    throw(new Error("Error parse udev output " + errs));
+                log.debug("get udev atrs: %s", data);
+                return data;
+            })
+
+        });
+    }
+
+    var readFile = Promise.denodeify(fs.readFile);
+
+    function getPerDeviceSettings(dev, settingFilename) {
+
+        var filename = path.join(dev.mount, settingFilename);
+
+
+        log.debug("Getting per device config " + filename);
+        return readFile(filename).then(function (data) {
+            var config = JSON.parse(data);
+
+            if (config.path) {
+                log.debug("Setting new mount path " + config.path);
+                dev.originMount = dev.mount;
+                dev.mount = path.join(dev.mount, config.path);
+            }
+
+            return {name: "setting", value: config};
+        }).catch(function (err) {
+            if (err.code && err.code === 'ENOENT') {
+                log.debug("No per device settings found");
+                return {};
+            }
+            return Promise.reject(err);
+        });
+
+    }
+
+    function _parseDfBuffer(buffer) {
+        var lines = buffer.split("\n", 2);
+
+        if (lines.length < 2)
+            throw(new Error("Error parsing df output"));
+
+        var str = lines[1].replace(/\s+/, ' ');
+
+        var sizes = str.split(' ', 4);
+
+        if (sizes.length < 3)
+            throw(new Error("Error parsing df output"));
 
         var data = [];
 
-        var errs = [];
+        data.push({name: "used", value: parseInt(sizes[2])});
+        data.push({name: "available", value: parseInt(sizes[3])});
+        data.push({name: "size", value: parseInt(sizes[1])});
 
-        //throw new Error("Error spawn udevadm");
+        return data;
+    }
 
-        result.stdout.encoding = 'utf8';
-        result.stdout.on('token', function (token) {
-            try {
-                var atr = _parseUdevAtr(token);
+    function _parseUdevAtr(token) {
+        var tkn = token.split("==", 2);
 
-                if (atr != null && !data.some(checkExists, atr)) {
-                    data.push(atr);
-                }
-            } catch (err) {
-                errs.push(err)
+        if (tkn.length < 2)
+            return null;
+
+        var token = {
+            name: tkn[0].trim(),
+            value: tkn[1].replace(/\"/g, "").trim()
+        };
+
+        if (token.name === "ATTRS{model}")
+            return {name: "model", value: token.value};
+        else if (token.name === "ATTR{vendor}")
+            return {name: "vendor", value: token.value};
+        else if (token.name === "ATTRS{serial}")
+            return {name: "serial", value: token.value};
+        else
+            return null;
+    }
+
+    function _fillDev(dev, atrs) {
+
+        atrs.forEach(function (atr) {
+
+            if (Array.isArray(atr)) {
+                _fillDev(dev, atr);
+            }
+            else {
+                if (atr.name && atr.value)
+                    dev[atr.name] = atr.value;
             }
         });
 
-        function checkExists(cur, index, array) {
-            return this.name === cur.name;
-        }
-
-        return result.done.then(function () {
-
-            if (errs.length > 0)
-                throw(new Error("Error parse udev output " + errs));
-            log.debug("get udev atrs: %s", data);
-            return data;
-        })
-
-    });
+    }
 }
 
-var readFile = Promise.denodeify(fs.readFile);
-
-function getPerDeviceSettings(dev, settingFilename) {
-
-    var filename = path.join(dev.mount, settingFilename);
-
-
-    log.debug("Getting per device config " + filename);
-    return readFile(filename).then(function (data) {
-        var config = JSON.parse(data);
-
-        if (config.path) {
-            log.debug("Setting new mount path " + config.path);
-            dev.originMount = dev.mount;
-            dev.mount = path.join(dev.mount, config.path);
-        }
-
-        return {name: "setting", value: config};
-    }).catch(function (err) {
-        if (err.code && err.code === 'ENOENT') {
-            log.debug("No per device settings found");
-            return {};
-        }
-        return Promise.reject(err);
-    });
-
-}
-
-function _parseDfBuffer(buffer) {
-    var lines = buffer.split("\n", 2);
-
-    if (lines.length < 2)
-        throw(new Error("Error parsing df output"));
-
-    var str = lines[1].replace(/\s+/, ' ');
-
-    var sizes = str.split(' ', 4);
-
-    if (sizes.length < 3)
-        throw(new Error("Error parsing df output"));
-
-    var data = [];
-
-    data.push({name: "used", value: parseInt(sizes[2])});
-    data.push({name: "available", value: parseInt(sizes[3])});
-    data.push({name: "size", value: parseInt(sizes[1])});
-
-    return data;
-}
-
-function _parseUdevAtr(token) {
-    var tkn = token.split("==", 2);
-
-    if (tkn.length < 2)
-        return null;
-
-    var token = {
-        name: tkn[0].trim(),
-        value: tkn[1].replace(/\"/g, "").trim()
-    };
-
-    if (token.name === "ATTRS{model}")
-        return {name: "model", value: token.value};
-    else if (token.name === "ATTR{vendor}")
-        return {name: "vendor", value: token.value};
-    else if (token.name === "ATTRS{serial}")
-        return {name: "serial", value: token.value};
-    else
-        return null;
-}
-
-function _fillDev(dev, atrs) {
-
-    atrs.forEach(function (atr) {
-
-        if (Array.isArray(atr)) {
-            _fillDev(dev, atr);
-        }
-        else {
-            if (atr.name && atr.value)
-                dev[atr.name] = atr.value;
-        }
-    });
-
-}
+util.inherits(CreateBlockInfo, events.EventEmitter);
 
 module.exports = CreateBlockInfo;

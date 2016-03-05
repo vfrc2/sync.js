@@ -1,49 +1,79 @@
-// Need to run rsync command, if no runnig daemon when simply start rsync job
-// else delegate it to runnig daemon
-//
-// if rsync called with --daemon
-//   check if no daemon already running, then
-//   save pid, rpc port number to /var/run/<name> from config or args
-//   eles exit with error
-//
-// if running without --daemon
-//   check if daemon already running, then
-//      simply parse args to tcp requst
-//   else
-//      directly start rsync command with givin args
-//
-//  Cmd args:
-//  
-//    run as client or just runner with out web interface:
-//   
-//      sync [-p <port>] [--stop|--status] [<hdd-path>] [<dop args>]
-//
-//    run as web interface daemon:
-//  
-//      sync [-p <port>] [-c <conf>] -d
-//
-//
-//    --daemon, -d - daemon mode start web interface
-//    
-//    --pid, -p <pid-file> - pid of server
-//    --conf, -c <conf-file> - config file for sync (default /etc/<pname>; /home/<user>/.pname)
-//    
-//    --status - get status of sync from daemon
-//    --stop   - stop syncing
-//    
-//    <hdd-path> - path to remote drive where to tmp sync file
-//    <dop rsync args> - any rsync args pass throw to rsync
-//      
-//    config template:
-//        daemon:
-//          pid: /var/run/sync.pid
-//        
-//        rsync:
-//          path: /usr/lib/....
-//          args: "-avrhm --progress -F"
-//        
-//        target:
-//          from: /srv/share/downloads
-//          remote: server.pyt.lan:share/videos
-//
+var yargs = require("yargs");
 
+var args = getConfig();
+
+var hdd = args.hdd;
+
+//console.log(args);
+
+if (!hdd){
+    console.log("Error specify hdd path");
+}
+
+
+
+
+
+function getConfig() {
+
+    /**
+     * Commandline args:
+     *
+     * ENV prefix SYNCJS_
+     *
+     * cli [options] path-to-hdd
+     *
+     */
+    var internalJSON = JSON;
+
+    try {
+
+        JSON = require('hjson');
+
+        var args = yargs
+            .option('url', {
+                alias: 'u',
+                nargs: 1,
+                describe: "api url of the server instance"
+
+            })
+            .option('pid',{
+                default: '/var/run/syncjs/api',
+                nargs: 1,
+                describe: "api file of running server instance"
+            })
+            .option('n', {
+                alias: "dryrun",
+                description: 'sdryrun sync job'
+            })
+            //over options options
+            .option('v', {
+                alias: "verbose",
+                description: 'set global log level to debug'
+            })
+            .env("SYNCJS_")
+            .usage('Connects to syncjs server and start sync job.\n' +
+                '\nUsage: $0 <path-to-hdd> [options] [-- rsyncArgs]')
+            .config('c', "Config file")
+            .alias('c', 'config')
+            .default('c', '~/.syncjs.json')
+            .help('h')
+            .alias('h', 'help')
+            .epilog('vfrc29@gmail.com, MIT license 2015')
+            .argv;
+
+        args.hdd = args._[0] || undefined;
+        args.rsyncExtraArgs = args._.slice(1);
+        if (args.verbose)
+            logger.setGlobalLevel('debug');
+
+        return args;
+    }
+    catch (err) {
+        throw err;
+    }
+    finally {
+        JSON = internalJSON;
+
+    }
+}
