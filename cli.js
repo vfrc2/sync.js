@@ -1,18 +1,37 @@
+var logger = require('./helpers/logger');
+var log = require('./helpers/logger')(module);
+
+var fs = require('fs');
+var request = require('requset');
+var process = require('process');
+
 var yargs = require("yargs");
 
-var args = getConfig();
+try {
+    var args = getConfig();
+    logger.setConfing(args);
 
-var hdd = args.hdd;
+    var hdd = args.hdd;
 
-//console.log(args);
+    log.debug("Starting cli");
 
-if (!hdd){
-    console.log("Error specify hdd path");
+    if (!hdd) {
+        log.error("Error specify hdd path");
+    }
+
+
+
+
+
+
+} catch (err) {
+    if (err instanceof ConfigError) {
+        yargs.showHelp();
+    }
+    log.error(err);
+
+    process.exit(1);
 }
-
-
-
-
 
 function getConfig() {
 
@@ -28,7 +47,9 @@ function getConfig() {
 
     try {
 
-        JSON = require('hjson');
+        log.debug("Getting config");
+
+        //JSON = require('hjson');
 
         var args = yargs
             .option('url', {
