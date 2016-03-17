@@ -35,7 +35,8 @@ try {
         var url = "http://" + server.address().address +":"+ (server.address().port || '');
 
         var data = "" + process.pid + "\n" +
-            url + config.apiRoute;
+            url + '\n' +
+            config.apiRoute + '\n';
 
         fs.writeFileSync(config.pid, data, 'utf8');
 

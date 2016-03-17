@@ -61,7 +61,16 @@ function CreateBlockInfo(mountPath) {
             process.stdout.on("token", function (token) {
                 log.debug("Get dev string '%s'", token);
                 var tkn = token.split(" ", 2);
-                promises.push(onDeviceInput(tkn[0], tkn[1]));
+                promises.push(
+                    onDeviceInput(tkn[0], tkn[1]).catch(
+                        function(err){
+                            overalWarning.push("Error while getting device " +tkn[0]+": "+
+                            err);
+                            log.error("Devinfo error", err.message);
+                            log.debug("Devinfo stack", err.stack);
+                            return undefined;
+                        }
+                    ));
             });
 
             return process.done.then(function () {
@@ -111,7 +120,7 @@ function CreateBlockInfo(mountPath) {
     }
 
     function onDeviceInput(dev, mount) {
-        try {
+
 
             var dev = {
                 dev: dev,
@@ -153,17 +162,11 @@ function CreateBlockInfo(mountPath) {
                     log.error("Dev '%s'  get info error", dev.dev, err.message);
                     log.debug("Dev: ", dev.dev, err.stack);
 
-                    overalWarning.push("Error while parse dev " + dev.dev +
+                    deviceWarning.push("Error while parse dev " + dev.dev +
                         " " + err.message);
 
                     return undefined;
                 });
-        } catch (err) {
-            log.error("Devinfo error", err.message);
-            log.debug("Devinfo stack", err.stack);
-            overalWarning.push("Error while parse devices! " +
-                " " + err.message);
-        }
     };
 
     function getDfinfo(dev) {

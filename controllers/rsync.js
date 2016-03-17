@@ -122,7 +122,7 @@ function CreateRsyncController(app) {
 
             _setRsyncConf(rsync, req.appconfig);
 
-            var extraArgs = req.body.extraArgs;
+            var extraArgs = req.body.extraArgs || [];
 
             if (req.appconfig.role != 'consumer') {
 
