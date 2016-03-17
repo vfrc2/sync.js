@@ -158,15 +158,15 @@ function CreateBlockInfo(mountPath) {
 
                     return dev;
                 })
-                .catch(function (err) {
-                    log.error("Dev '%s'  get info error", dev.dev, err.message);
-                    log.debug("Dev: ", dev.dev, err.stack);
-
-                    deviceWarning.push("Error while parse dev " + dev.dev +
-                        " " + err.message);
-
-                    return undefined;
-                });
+                //.catch(function (err) {
+                //    log.error("Dev '%s'  get info error", dev.dev, err.message);
+                //    log.debug("Dev: ", dev.dev, err.stack);
+                //
+                //    deviceWarning.push("Error while parse dev " + dev.dev +
+                //        " " + err.message);
+                //
+                //    return undefined;
+                //});
     };
 
     function getDfinfo(dev) {
